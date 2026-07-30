@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "moduleDetection": "force",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@marketforge/config": ["packages/config/src/index.ts"],
+      "@marketforge/logger": ["packages/logger/src/index.ts"],
+      "@marketforge/contracts": ["packages/contracts/src/index.ts"],
+      "@marketforge/db": ["packages/db/src/index.ts"],
+      "@marketforge/queue": ["packages/queue/src/index.ts"],
+      "@marketforge/secrets": ["packages/secrets/src/index.ts"],
+      "@marketforge/auth": ["packages/auth/src/index.ts"],
+      "@marketforge/adapters": ["packages/adapters/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next", ".turbo", "coverage"]
+}

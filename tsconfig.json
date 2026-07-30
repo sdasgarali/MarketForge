@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "files": [],
+  "references": [
+    { "path": "packages/config" },
+    { "path": "packages/logger" },
+    { "path": "packages/contracts" },
+    { "path": "packages/db" },
+    { "path": "packages/queue" },
+    { "path": "packages/secrets" },
+    { "path": "packages/auth" },
+    { "path": "packages/adapters" }
+  ]
+}

@@ -1,0 +1,1004 @@
+# Enterprise AI Marketing Automation Platform – Master Prompt for Claude Code
+
+## Project Overview
+
+You are a senior Software Architect, AI Engineer, DevOps Engineer, UX Designer, Database Architect, and n8n Automation Expert.
+
+Your task is to design and build a production-ready, enterprise-grade AI Marketing Automation Platform capable of automatically researching, generating, reviewing, scheduling, publishing, and analyzing social media content for multiple companies.
+
+This is **NOT** a simple automation workflow.
+
+This should be designed like a professional SaaS product similar to HubSpot, Buffer, Hootsuite, Sprout Social, or Jasper AI, but powered by AI agents and n8n.
+
+The system must be scalable enough to support hundreds of companies and thousands of daily AI-generated posts.
+
+---
+
+# Primary Objective
+
+Create a centralized AI-powered marketing automation platform with:
+
+* Custom Web Dashboard
+* n8n Automation Engine
+* AI Agents
+* Multiple LLM Support
+* Multiple Image Generation Models
+* Multiple Video Generation Models
+* Multi-brand Management
+* Multi-user Support
+* Google Drive Integration
+* Analytics
+* Scheduling
+* Content Approval Workflow
+* AI Quality Control
+* Enterprise Security
+
+The platform should require minimal human intervention while still allowing manual review and approval.
+
+---
+
+# Tech Stack
+
+Frontend
+
+* Next.js (Latest)
+* TypeScript
+* Tailwind CSS
+* ShadCN UI
+* React Query
+* Zustand
+* Framer Motion
+
+Backend
+
+* Node.js
+* Express.js
+* TypeScript
+
+Database
+
+* PostgreSQL (Primary)
+* Redis (Queue & Cache)
+
+Storage
+
+* Google Drive
+* Supabase Storage (optional)
+* AWS S3 (future-ready abstraction)
+
+Automation
+
+* n8n (self-hosted)
+
+AI
+
+Support multiple providers through a common abstraction layer:
+
+* OpenAI
+* Claude
+* Gemini
+* Groq
+* OpenRouter
+* Local Ollama Models
+
+Image Models
+
+* Flux
+* SDXL
+* Ideogram
+* GPT Image
+* ComfyUI
+
+Video Models
+
+* Higgsfield
+* Veo
+* Kling
+* Runway
+* Seedance
+* Hailuo
+* Pika
+
+Authentication
+
+* Clerk or Auth.js
+
+Deployment
+
+* Docker
+* Docker Compose
+* Kubernetes Ready
+
+---
+
+# Platform Goals
+
+The platform must:
+
+Generate content automatically
+
+Research current trends
+
+Understand every company's website
+
+Follow brand guidelines
+
+Generate images
+
+Generate videos
+
+Generate GIFs
+
+Generate voiceovers
+
+Generate subtitles
+
+Generate captions
+
+Schedule posts
+
+Publish automatically
+
+Analyze performance
+
+Improve future content using analytics
+
+---
+
+# Dashboard Requirements
+
+Create a beautiful modern dashboard.
+
+Include:
+
+Dashboard
+
+Campaigns
+
+Brands
+
+AI Agents
+
+Media Library
+
+Research Center
+
+Workflow Monitor
+
+Publishing Queue
+
+Analytics
+
+Reports
+
+System Logs
+
+Notifications
+
+Settings
+
+Users
+
+Billing
+
+Prompt Library
+
+Approval Queue
+
+Content Calendar
+
+Asset Manager
+
+API Manager
+
+Integrations
+
+Dark Mode
+
+Responsive Design
+
+---
+
+# Dashboard Buttons
+
+Start Campaign
+
+Run Now
+
+Auto Mode
+
+Pause
+
+Resume
+
+Emergency Stop
+
+Retry Failed
+
+Generate Only
+
+Publish Only
+
+Approve All
+
+Reject All
+
+Cancel Queue
+
+Restart Queue
+
+Refresh Status
+
+---
+
+# Brand Management
+
+Every company must have its own profile.
+
+Each profile stores:
+
+Company Name
+
+Website
+
+Industry
+
+Products
+
+Services
+
+Mission
+
+Vision
+
+Target Audience
+
+Competitors
+
+Logo
+
+Brand Colors
+
+Fonts
+
+Icons
+
+Brand Voice
+
+Writing Style
+
+Preferred CTA
+
+Negative Prompt
+
+Image Style
+
+Video Style
+
+Approved Characters
+
+Social Accounts
+
+Publishing Schedule
+
+Timezone
+
+Google Drive Folder
+
+Languages
+
+Prompt Templates
+
+Approval Settings
+
+Analytics History
+
+Knowledge Base
+
+---
+
+Example brands
+
+Neuraforz
+
+Medeoan
+
+Exzelon
+
+Tawakkul Collection
+
+Unlimited future companies
+
+---
+
+# Scheduling System
+
+DO NOT use hardcoded schedules.
+
+Design a flexible scheduling engine.
+
+Recommended database structure:
+
+Campaign
+
+Brand
+
+Platform
+
+Topic
+
+Priority
+
+Date
+
+Time
+
+Timezone
+
+Language
+
+Status
+
+Retry Count
+
+Campaign Type
+
+Approval Required
+
+Generated
+
+Published
+
+Analytics Synced
+
+Support:
+
+One-time campaigns
+
+Recurring campaigns
+
+Weekly
+
+Monthly
+
+Daily
+
+Holiday campaigns
+
+Product launches
+
+Emergency announcements
+
+Manual publishing
+
+Automatic publishing
+
+---
+
+# Research AI
+
+Before generating anything, research must happen.
+
+Collect:
+
+Google Trends
+
+Industry News
+
+Reddit Discussions
+
+LinkedIn Trends
+
+Twitter/X Trends
+
+Competitor Posts
+
+Website Updates
+
+Blog Posts
+
+SEO Keywords
+
+Frequently Asked Questions
+
+Customer Reviews
+
+Pain Points
+
+Search Intent
+
+Hashtags
+
+Popular Hooks
+
+Seasonal Events
+
+Recent Product Releases
+
+Community Discussions
+
+Create a structured research report.
+
+---
+
+# AI Agent Architecture
+
+Create independent AI agents.
+
+Examples:
+
+Research Agent
+
+SEO Agent
+
+Marketing Strategist
+
+Content Planner
+
+Copywriter
+
+Script Writer
+
+Fact Checker
+
+Grammar Checker
+
+Brand Compliance Agent
+
+Visual Director
+
+Thumbnail Designer
+
+Character Designer
+
+Image Prompt Engineer
+
+Video Prompt Engineer
+
+Voiceover Writer
+
+Subtitle Generator
+
+Hashtag Generator
+
+Publishing Manager
+
+Analytics Agent
+
+Performance Optimizer
+
+Prompt Optimizer
+
+Error Recovery Agent
+
+Cost Optimizer
+
+Quality Assurance Agent
+
+Every agent should have:
+
+Input
+
+Output
+
+Responsibilities
+
+Fallback Logic
+
+Retry Logic
+
+Logging
+
+Metrics
+
+---
+
+# Content Strategy Workflow
+
+Research
+
+↓
+
+Marketing Strategy
+
+↓
+
+Content Planning
+
+↓
+
+Platform Strategy
+
+↓
+
+Content Outline
+
+↓
+
+Copywriting
+
+↓
+
+Image Prompt
+
+↓
+
+Video Prompt
+
+↓
+
+Approval
+
+↓
+
+Publishing
+
+↓
+
+Analytics
+
+↓
+
+Optimization
+
+---
+
+# Platform-Specific Content
+
+Never generate identical content.
+
+Each platform requires unique content.
+
+YouTube
+
+5–7 minute videos
+
+10–15 second Shorts
+
+SEO title
+
+Description
+
+Tags
+
+Thumbnail text
+
+Pinned comment
+
+Community post
+
+Instagram
+
+Reels
+
+Stories
+
+Carousel
+
+Captions
+
+Hashtags
+
+Facebook
+
+Long-form posts
+
+Reels
+
+Stories
+
+Community engagement posts
+
+LinkedIn
+
+Professional articles
+
+Thought leadership
+
+Case studies
+
+Technical posts
+
+Company updates
+
+X
+
+Short posts
+
+Threads
+
+GIFs
+
+Posters
+
+Polls
+
+Quote posts
+
+Reference YouTube or Instagram content when appropriate.
+
+---
+
+# Character Generation
+
+Generate professional AI characters.
+
+Business professionals
+
+Doctors
+
+Developers
+
+Engineers
+
+Teachers
+
+Executives
+
+Healthcare workers
+
+Students
+
+Corporate teams
+
+Families
+
+Customers
+
+Fashion models (modest presentation only)
+
+Strictly avoid excessive skin exposure or inappropriate imagery.
+
+Use brand-specific:
+
+Clothing
+
+Colors
+
+Accessories
+
+Lighting
+
+Camera Angles
+
+Backgrounds
+
+Logo Placement
+
+Facial Expressions
+
+Aspect Ratios
+
+Negative Prompts
+
+---
+
+# Creative Generation
+
+Produce:
+
+Posters
+
+Carousels
+
+Banners
+
+Infographics
+
+GIFs
+
+Thumbnails
+
+YouTube Covers
+
+Instagram Covers
+
+LinkedIn Graphics
+
+Facebook Images
+
+Website Banners
+
+Ad Creatives
+
+---
+
+# Video Workflow
+
+Generate:
+
+YouTube videos
+
+Shorts
+
+Instagram Reels
+
+Facebook Reels
+
+LinkedIn videos
+
+Promotional clips
+
+Voiceovers
+
+Subtitles
+
+Background music
+
+Transitions
+
+Brand intro
+
+Brand outro
+
+---
+
+# Review System
+
+Never publish immediately.
+
+Run multiple AI review stages.
+
+Grammar
+
+Fact Checking
+
+Brand Compliance
+
+Copyright
+
+SEO
+
+Visual Quality
+
+Marketing Quality
+
+Platform Policy
+
+Duplicate Detection
+
+Accessibility
+
+If score < 90
+
+Regenerate automatically.
+
+---
+
+# Storage Structure
+
+Google Drive
+
+Brand
+
+Year
+
+Month
+
+Campaign
+
+Research
+
+Scripts
+
+Captions
+
+Images
+
+Videos
+
+GIFs
+
+Audio
+
+Subtitles
+
+Metadata
+
+Analytics
+
+Logs
+
+Version History
+
+---
+
+# Publishing Workflow
+
+At scheduled time:
+
+Retrieve approved assets
+
+Validate media requirements
+
+Publish
+
+Verify successful upload
+
+Store post URL
+
+Store timestamp
+
+Store platform ID
+
+Handle failures with retries
+
+Notify dashboard
+
+---
+
+# Analytics
+
+Collect:
+
+Views
+
+Reach
+
+Impressions
+
+Watch Time
+
+Clicks
+
+CTR
+
+Comments
+
+Likes
+
+Shares
+
+Followers
+
+Engagement Rate
+
+Conversions (where available)
+
+Store historical data.
+
+Use analytics to improve future AI strategies.
+
+---
+
+# Notification System
+
+Support:
+
+Email
+
+Slack
+
+Discord
+
+Telegram
+
+Dashboard notifications
+
+Success
+
+Failure
+
+Warnings
+
+Queue status
+
+Approval requests
+
+---
+
+# Logging
+
+Every action must be logged.
+
+Timestamp
+
+Workflow
+
+Agent
+
+Prompt
+
+Model
+
+Execution Time
+
+Token Usage
+
+Cost
+
+Errors
+
+Retries
+
+Output Version
+
+---
+
+# Security
+
+RBAC
+
+Admin
+
+Manager
+
+Editor
+
+Viewer
+
+Encrypted secrets
+
+API key management
+
+Audit logs
+
+Rate limiting
+
+Backup strategy
+
+Disaster recovery
+
+---
+
+# Performance
+
+The platform must support:
+
+500+ companies
+
+10,000+ generated assets per day
+
+1,000+ scheduled posts daily
+
+Concurrent workflow execution
+
+Queue management
+
+Automatic retries
+
+Load balancing
+
+Horizontal scaling
+
+---
+
+# Deliverables
+
+Design and implement:
+
+1. Complete system architecture
+2. Folder structure
+3. Database schema
+4. ER diagrams
+5. API documentation
+6. Frontend architecture
+7. Backend architecture
+8. n8n workflow architecture (modular, not monolithic)
+9. AI agent architecture
+10. Queue architecture
+11. Google Drive organization
+12. Prompt management system
+13. Cost optimization strategy
+14. Monitoring and logging
+15. Deployment with Docker
+16. Kubernetes-ready deployment
+17. CI/CD pipeline
+18. Unit and integration testing strategy
+19. Security best practices
+20. Scalability roadmap
+21. Production deployment guide
+
+---
+
+# Important Design Principles
+
+* Build modular workflows instead of one massive n8n workflow.
+* Separate orchestration, research, generation, review, publishing, and analytics into independent services.
+* Make every AI provider, image model, video model, and publishing platform replaceable through adapters.
+* Store configuration in the database instead of hardcoding values.
+* Design for fault tolerance, retries, observability, and future expansion.
+* Produce clean, maintainable, enterprise-quality code with clear documentation.
+* Follow modern software architecture principles (SOLID, clean architecture, domain-driven design where appropriate).
+
+Your goal is to produce a production-ready enterprise system that could realistically be used by a digital marketing agency managing hundreds of brands.

@@ -1,0 +1,11 @@
+# Normalize line endings across Windows + Linux (cross-platform rule).
+* text=auto eol=lf
+
+# Shell scripts must stay LF even on Windows checkouts (run inside containers).
+*.sh text eol=lf
+
+# Binary / generated — never diff or eol-normalize.
+*.png binary
+*.jpg binary
+*.pdf binary
+pnpm-lock.yaml -diff

@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Env — keep .env.example, ignore real env files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+# NOTE: pre-existing n8n.log at repo root is a planning artifact; it is force-kept below.
+!n8n.log
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# n8n / Docker local data
+.n8n/
+pgdata/
+redisdata/
+n8n-data/
+
+# Misc
+*.local
