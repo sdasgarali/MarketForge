@@ -20,7 +20,12 @@ See `README.md` to run. Remaining product questions (scale/quality-rubric/hostin
   **Postiz** (free) — decision pending (see Master_Plan §2a).
 - **Publish policy:** **per-brand trust tiers** — new brands require human approval; trusted brands may
   graduate to auto-publish after AI score passes threshold.
-- **Video:** deferred to **Phase 3**, metered. Roster includes **Kling** (via fal.ai, NOT native API — see ADR-007).
+- **Video (MEDIA-SCOPE):** scoped to **Kling short-form only (≤15s) via fal.ai + GIF export + poster images**;
+  big/long-form video is **PAUSED** (skip + notify, no spend) — re-enable via `VIDEO_ALLOW_LONGFORM`.
+  Kling integrates via fal.ai, NOT native API (ADR-007). GIF = short (≤6s) SILENT Kling clip exported to `.gif`
+  with ffmpeg. Config: `VIDEO_ENABLED` (default true), `VIDEO_ALLOW_LONGFORM` (default false),
+  `VIDEO_SHORT_MAX_S` (15), `GIF_MAX_S` (6), `VIDEO_DEFAULT_MODEL` (kling). Legacy `WORKER_ENABLE_VIDEO`
+  maps onto `VIDEO_ENABLED`.
 
 ## Golden decisions (locked from research — see CLAUDE_REFERENCE/architecture-decisions.md)
 - **Multi-tenancy:** shared Postgres schema + `org_id` on every table + **Row-Level Security (FORCE)**. Guard middleware sets `app.current_org` per transaction; all queries via a `TenantDb` wrapper.
@@ -35,7 +40,9 @@ See `README.md` to run. Remaining product questions (scale/quality-rubric/hostin
 
 ## Hard constraints (do not violate)
 - **Never publish immediately** — every content item passes AI review + composite score; auto-regen if < threshold; human approval gate per brand trust-tier.
-- **Video is Phase 3, opt-in, metered** — 2026 video APIs run $0.05–$0.75/sec; uncontrolled = thousands $/day. Not in MVP.
+- **Big/long-form video is PAUSED** — 2026 video APIs run $0.05–$0.75/sec; uncontrolled = thousands $/day.
+  Only Kling short-form (≤15s), GIF loops (≤6s), and poster images run. Long-form paused = skip + notify,
+  NO adapter call (zero spend); flip `VIDEO_ALLOW_LONGFORM` to re-enable.
 - **Content moderation gate is mandatory** before any AI-generated "character"/image reaches a real brand account (brand-safety + legal/likeness).
 - **Every AI call is logged** with model, tokens, cost, latency, retries, output version.
 - **Tenant isolation is sacred** — no query without `org_id` scope. Use `multi-tenant-isolation-auditor` after touching queries/endpoints.

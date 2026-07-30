@@ -72,6 +72,9 @@ export const ContentType = z.enum([
   'article',
   'story',
   'video',
+  // Poster = a bold static graphic/headline image (poster style, image-kind
+  // asset). Routed to a text-strong image model (modelHint 'ideogram').
+  'poster',
 ]);
 export type ContentType = z.infer<typeof ContentType>;
 

@@ -91,6 +91,13 @@ export function loadEnv(options: LoadEnvOptions = {}): Env {
     resolved[key] = resolveValue(raw, appEnv, key);
   }
 
+  // Back-compat: the legacy `WORKER_ENABLE_VIDEO` gate maps onto `VIDEO_ENABLED`.
+  // If the new key is not set but the legacy one is, honour the legacy value so
+  // existing deployments keep working. The new key always wins when both exist.
+  if (resolved.VIDEO_ENABLED === undefined && resolved.WORKER_ENABLE_VIDEO !== undefined) {
+    resolved.VIDEO_ENABLED = resolved.WORKER_ENABLE_VIDEO;
+  }
+
   const parsed = envSchema.safeParse(resolved);
   if (!parsed.success) {
     throw new EnvValidationError(flattenZodIssues(parsed.error));

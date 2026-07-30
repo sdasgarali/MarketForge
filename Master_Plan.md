@@ -17,7 +17,10 @@ correct MVP first**, and treat scale/video as later, budgeted phases.
 1. **Platforms for MVP** → **X + Instagram** (least-gated, via aggregator).
 2. **AI monthly budget** → **Lean, < $500/mo** total. Image-only MVP, cheap-tier routing, no video.
 3. **Auto-publish policy** → **per-brand trust tiers** (new = approval required; trusted may auto-publish).
-4. **Video in v1?** → **Deferred to Phase 3**, metered. Roster to include **Kling** (via fal.ai — ADR-007).
+4. **Video in v1?** → **MEDIA-SCOPE (revised 2026-07-31):** short-form only is IN near-term — **Kling
+   short-form (≤15s) via fal + GIF loops (≤6s) + poster images**. Big/**long-form video stays Phase 3**
+   and is **PAUSED** by default (skip + notify, no spend); re-enable via `VIDEO_ALLOW_LONGFORM`. Kling via
+   fal.ai, not native (ADR-007).
 
 ### 2a. NEW blocker created by the lean budget (needs a call)
 - **Ayrshare Business is ~$599/mo — over the < $500 ceiling.** Options for MVP:
@@ -55,6 +58,9 @@ Scope: **ONE brand → small multi-tenant, X + Instagram, text + 1 image, per-br
 - [ ] Modular n8n sub-workflows for the actual publish calls (queue mode)
 - [ ] Basic analytics pull + dashboard tiles; full logging w/ per-run cost/token
 - [ ] Notifications: email + one chat channel (Slack/Telegram)
+- [ ] **Scoped media (MEDIA-SCOPE):** Kling short-form (≤15s) via fal + GIF export (≤6s silent → .gif via
+      ffmpeg-static) + poster images (text-strong via ideogram). `resolveMediaPlan` gates it; long-form
+      paused (skip + notify, no spend) behind `VIDEO_ALLOW_LONGFORM`.
 - **Exit criteria:** a scheduled post goes brief → published on 2 platforms with review+approval, fully logged, with analytics returning — for 5–20 pilot brands.
 
 ### Phase 2 — Breadth & operations  (~8–12 weeks)
@@ -67,7 +73,9 @@ Scope: **ONE brand → small multi-tenant, X + Instagram, text + 1 image, per-br
 - [ ] Notification fan-out (Slack/Discord/Telegram/email/dashboard)
 
 ### Phase 3 — Rich media & scale  (~8–12 weeks)
-- [ ] Video/voice/subtitle/GIF pipeline (Veo 3.1 MCP + Runway + fal), metered + segment-stitching
+- [ ] **Long-form / big video** (Veo 3.1 MCP + Runway + fal), metered + segment-stitching — the piece kept
+      PAUSED by MEDIA-SCOPE; enable via `VIDEO_ALLOW_LONGFORM`. (Short-form/GIF/poster already shipped in Phase 1.)
+- [ ] Voice + subtitle pipeline (ElevenLabs)
 - [ ] Character generation w/ enforced moderation gate
 - [ ] Self-host bulk image gen (Flux/SDXL on ComfyUI) — break-even at ~1k+ imgs/day
 - [ ] K8s deploy, managed PG/Redis, KEDA autoscaling on queue depth, read replicas + pgBouncer

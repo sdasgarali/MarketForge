@@ -5,7 +5,10 @@
  *
  * Env:
  *   WORKER_HEALTH_PORT   health/readiness HTTP port (default 9090)
- *   WORKER_ENABLE_VIDEO  'true' to enable the gated generate-video processor
+ *   VIDEO_ENABLED        master video switch (default true). Legacy
+ *                        WORKER_ENABLE_VIDEO is mapped onto it for back-compat.
+ *   VIDEO_ALLOW_LONGFORM single switch to re-enable big/long-form video (default
+ *                        false — long-form is PAUSED: skip + notify, no spend).
  */
 import type { Worker } from 'bullmq';
 import { connection } from '@marketforge/queue';

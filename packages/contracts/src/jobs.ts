@@ -68,13 +68,19 @@ export const GenerateImageJobPayload = JobBase.extend({
 });
 export type GenerateImageJobPayload = z.infer<typeof GenerateImageJobPayload>;
 
-// --- generate-video (Phase 3, metered) ---
+// --- generate-video (MEDIA-SCOPE: Kling short-form + GIF; long-form paused) ---
+// New fields are OPTIONAL with defaults so existing callers still validate.
+//   output_format: 'gif' produces a short SILENT clip exported to .gif.
+//   longform: true is an explicit "big video" request → the worker PAUSES it
+//     (skip + notify, no spend) unless VIDEO_ALLOW_LONGFORM is set.
 export const GenerateVideoJobPayload = JobBase.extend({
   content_item_id: Uuid.optional(),
   prompt: z.string(),
   duration_s: z.number().positive().max(60).default(5),
   with_audio: z.boolean().default(false),
   model_hint: z.string().optional(),
+  output_format: z.enum(['mp4', 'gif']).default('mp4'),
+  longform: z.boolean().default(false),
 });
 export type GenerateVideoJobPayload = z.infer<typeof GenerateVideoJobPayload>;
 
