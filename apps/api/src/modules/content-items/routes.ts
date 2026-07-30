@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import type { z } from 'zod';
-import { ContentStatus, Uuid } from '@marketforge/contracts';
+import { ContentStatus, Platform, Uuid } from '@marketforge/contracts';
 import { asyncHandler } from '../../lib/async-handler.js';
 import { getCtx } from '../../lib/context.js';
 import { parseOrThrow } from '../../lib/validate.js';
@@ -15,9 +15,14 @@ import { contentItemsService } from './service.js';
 
 export const contentItemsRouter: Router = Router();
 
+// The web content hook sends ?status=&platform=&brand=&campaign= (bare `brand`/
+// `campaign`, not `*_id`). Accept both spellings so the filters actually apply.
 const ListQuery = PaginationQuery.extend({
   status: ContentStatus.optional(),
+  platform: Platform.optional(),
+  brand: Uuid.optional(),
   brand_id: Uuid.optional(),
+  campaign: Uuid.optional(),
   campaign_id: Uuid.optional(),
 });
 
@@ -29,7 +34,12 @@ contentItemsRouter.get(
     const q = parseOrThrow(ListQuery, req.query);
     const { items, total } = await contentItemsService.list(
       ctx.orgId,
-      { status: q.status, brandId: q.brand_id, campaignId: q.campaign_id },
+      {
+        status: q.status,
+        platform: q.platform,
+        brandId: q.brand ?? q.brand_id,
+        campaignId: q.campaign ?? q.campaign_id,
+      },
       q,
     );
     res.json(paginate(items, total, q));

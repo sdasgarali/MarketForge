@@ -14,11 +14,22 @@
  */
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Platform, TrustTier } from '@marketforge/contracts';
-import { brands, contentItems, db, reviewResults, withTenant } from '@marketforge/db';
+import {
+  assets,
+  brands,
+  contentItems,
+  db,
+  publishJobs,
+  reviewResults,
+  withTenant,
+} from '@marketforge/db';
+import type { AssetRow, PublishJobRow, ReviewResultRow } from '@marketforge/db';
 import { scheduler } from '@marketforge/queue';
 import { createLogger } from '@marketforge/logger';
 import { ConflictError, NotFoundError } from '../../http/errors.js';
 import { contentItemToDto } from '../../lib/mappers.js';
+import { assetImageUrl } from '../../lib/assets.js';
+import { buildComposite, reviewRowsToDtos } from '../../lib/reviews.js';
 import type { PaginationQuery } from '../../lib/pagination.js';
 import { decidePublishing, type ApprovalPolicyInput } from './publishing-policy.js';
 
@@ -55,12 +66,18 @@ async function compositeScore(
 }
 
 export const approvalsService = {
-  /** List items awaiting a decision (status review or approved-pending). */
+  /**
+   * List approval-queue rows (status review or approved-pending). Each row is an
+   * ApprovalItem the web renders: `{ content_item, composite, reviews, brand_name }`.
+   * Joins in the brand name, per-item review results (→ composite verdict), the
+   * item's scheduled time (publish_job) and primary image (asset).
+   */
   async list(orgId: string, page: PaginationQuery) {
     return withTenant(db, orgId, async (tx) => {
       const rows = await tx
-        .select()
+        .select({ item: contentItems, brand_name: brands.companyName })
         .from(contentItems)
+        .leftJoin(brands, eq(contentItems.brandId, brands.id))
         .where(inArray(contentItems.status, [...QUEUE_STATUSES]))
         .orderBy(desc(contentItems.updatedAt))
         .limit(page.limit)
@@ -69,7 +86,88 @@ export const approvalsService = {
         .select({ count: sql<number>`count(*)::int` })
         .from(contentItems)
         .where(inArray(contentItems.status, [...QUEUE_STATUSES]));
-      return { items: rows.map(contentItemToDto), total: Number(count) };
+
+      const ids = rows.map((r) => r.item.id);
+
+      // Review results per item (for the per-check breakdown + composite).
+      const reviewsByItem = new Map<string, ReviewResultRow[]>();
+      if (ids.length > 0) {
+        const reviewRows = (await tx
+          .select()
+          .from(reviewResults)
+          .where(inArray(reviewResults.contentItemId, ids))
+          .orderBy(reviewResults.createdAt)) as ReviewResultRow[];
+        for (const rr of reviewRows) {
+          const list = reviewsByItem.get(rr.contentItemId) ?? [];
+          list.push(rr);
+          reviewsByItem.set(rr.contentItemId, list);
+        }
+      }
+
+      // Scheduled time (publish_jobs) + primary image (assets) per item.
+      const scheduledByItem = new Map<string, Date>();
+      const imageByItem = new Map<string, string>();
+      if (ids.length > 0) {
+        const jobs = (await tx
+          .select({
+            contentItemId: publishJobs.contentItemId,
+            scheduledAt: publishJobs.scheduledAt,
+          })
+          .from(publishJobs)
+          .where(inArray(publishJobs.contentItemId, ids))
+          .orderBy(publishJobs.scheduledAt)) as Pick<
+          PublishJobRow,
+          'contentItemId' | 'scheduledAt'
+        >[];
+        for (const j of jobs) {
+          if (j.contentItemId && j.scheduledAt && !scheduledByItem.has(j.contentItemId)) {
+            scheduledByItem.set(j.contentItemId, j.scheduledAt);
+          }
+        }
+        const imgs = (await tx
+          .select({
+            contentItemId: assets.contentItemId,
+            driveFileId: assets.driveFileId,
+            storageKey: assets.storageKey,
+          })
+          .from(assets)
+          .where(
+            and(
+              inArray(assets.contentItemId, ids),
+              eq(assets.kind, 'image'),
+              eq(assets.status, 'ready'),
+            ),
+          )
+          .orderBy(desc(assets.createdAt))) as Pick<
+          AssetRow,
+          'contentItemId' | 'driveFileId' | 'storageKey'
+        >[];
+        for (const a of imgs) {
+          if (a.contentItemId && !imageByItem.has(a.contentItemId)) {
+            const url = assetImageUrl(a);
+            if (url) imageByItem.set(a.contentItemId, url);
+          }
+        }
+      }
+
+      const items = rows.map((r) => {
+        const reviewRows = reviewsByItem.get(r.item.id) ?? [];
+        const content_item = contentItemToDto(r.item, {
+          scheduled_at: scheduledByItem.get(r.item.id) ?? null,
+          image_url: imageByItem.get(r.item.id) ?? null,
+        });
+        const composite = buildComposite(r.item.id, reviewRows, {
+          fallbackScore: r.item.qualityScore == null ? null : Number(r.item.qualityScore),
+        });
+        return {
+          content_item,
+          composite,
+          reviews: reviewRowsToDtos(reviewRows),
+          brand_name: r.brand_name ?? '—',
+        };
+      });
+
+      return { items, total: Number(count) };
     });
   },
 

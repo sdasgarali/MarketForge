@@ -3,19 +3,23 @@
  * enqueues a `generate-text` job with attempt_reason='regeneration' so the
  * worker produces a fresh version (ADR-008 output versioning).
  */
-import { and, desc, eq, sql, type SQL } from 'drizzle-orm';
-import { contentItems, db, withTenant } from '@marketforge/db';
+import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { assets, contentItems, db, publishJobs, reviewResults, withTenant } from '@marketforge/db';
+import type { AssetRow, PublishJobRow } from '@marketforge/db';
 import { enqueue } from '@marketforge/queue';
 import { createLogger } from '@marketforge/logger';
 import type { ContentStatus, Platform } from '@marketforge/contracts';
 import { NotFoundError } from '../../http/errors.js';
 import { contentItemToDto } from '../../lib/mappers.js';
+import { assetImageUrl } from '../../lib/assets.js';
+import { buildComposite, reviewRowsToDtos } from '../../lib/reviews.js';
 import type { PaginationQuery } from '../../lib/pagination.js';
 
 const log = createLogger({ service: 'api', workflow: 'content-items' });
 
 export interface ContentItemFilters {
   status?: ContentStatus;
+  platform?: Platform;
   brandId?: string;
   campaignId?: string;
 }
@@ -23,10 +27,73 @@ export interface ContentItemFilters {
 function buildWhere(f: ContentItemFilters): SQL | undefined {
   const conds: SQL[] = [];
   if (f.status) conds.push(eq(contentItems.status, f.status));
+  if (f.platform) conds.push(eq(contentItems.platform, f.platform));
   if (f.brandId) conds.push(eq(contentItems.brandId, f.brandId));
   if (f.campaignId) conds.push(eq(contentItems.campaignId, f.campaignId));
   if (conds.length === 0) return undefined;
   return conds.length === 1 ? conds[0] : and(...conds);
+}
+
+type Tx = Parameters<Parameters<typeof withTenant>[2]>[0];
+
+/**
+ * For a set of content-item ids, resolve the join-derived DTO extras the web
+ * consumes: `scheduled_at` (earliest pending/publishing publish_job) and
+ * `image_url` (newest ready image asset). One query each; empty-safe.
+ */
+async function loadExtras(
+  tx: Tx,
+  ids: string[],
+): Promise<Map<string, { scheduled_at?: Date | null; image_url?: string }>> {
+  const out = new Map<string, { scheduled_at?: Date | null; image_url?: string }>();
+  if (ids.length === 0) return out;
+
+  const jobs = (await tx
+    .select({
+      contentItemId: publishJobs.contentItemId,
+      scheduledAt: publishJobs.scheduledAt,
+      status: publishJobs.status,
+    })
+    .from(publishJobs)
+    .where(inArray(publishJobs.contentItemId, ids))
+    .orderBy(publishJobs.scheduledAt)) as Pick<
+    PublishJobRow,
+    'contentItemId' | 'scheduledAt' | 'status'
+  >[];
+  for (const j of jobs) {
+    if (!j.contentItemId) continue;
+    const cur = out.get(j.contentItemId) ?? {};
+    // Prefer the first (earliest) scheduled time we see per item.
+    if (cur.scheduled_at == null && j.scheduledAt) cur.scheduled_at = j.scheduledAt;
+    out.set(j.contentItemId, cur);
+  }
+
+  const imgs = (await tx
+    .select({
+      contentItemId: assets.contentItemId,
+      driveFileId: assets.driveFileId,
+      storageKey: assets.storageKey,
+      createdAt: assets.createdAt,
+    })
+    .from(assets)
+    .where(
+      and(inArray(assets.contentItemId, ids), eq(assets.kind, 'image'), eq(assets.status, 'ready')),
+    )
+    .orderBy(desc(assets.createdAt))) as Pick<
+    AssetRow,
+    'contentItemId' | 'driveFileId' | 'storageKey' | 'createdAt'
+  >[];
+  for (const a of imgs) {
+    if (!a.contentItemId) continue;
+    const cur = out.get(a.contentItemId) ?? {};
+    if (cur.image_url == null) {
+      const url = assetImageUrl(a);
+      if (url) cur.image_url = url;
+    }
+    out.set(a.contentItemId, cur);
+  }
+
+  return out;
 }
 
 export const contentItemsService = {
@@ -41,15 +108,35 @@ export const contentItemsService = {
 
       const countBase = tx.select({ count: sql<number>`count(*)::int` }).from(contentItems).$dynamic();
       const [{ count } = { count: 0 }] = await (where ? countBase.where(where) : countBase);
-      return { items: rows.map(contentItemToDto), total: Number(count) };
+
+      const extras = await loadExtras(tx, rows.map((r) => r.id));
+      const items = rows.map((r) => contentItemToDto(r, extras.get(r.id) ?? {}));
+      return { items, total: Number(count) };
     });
   },
 
+  /**
+   * Single content item plus its AI review verdict. Returns the shape the web
+   * detail drawer consumes: `{ item, composite, reviews }`.
+   */
   async get(orgId: string, id: string) {
     return withTenant(db, orgId, async (tx) => {
       const [row] = await tx.select().from(contentItems).where(eq(contentItems.id, id)).limit(1);
       if (!row) throw new NotFoundError(`Content item ${id} not found`);
-      return contentItemToDto(row);
+
+      const extras = await loadExtras(tx, [row.id]);
+      const item = contentItemToDto(row, extras.get(row.id) ?? {});
+
+      const reviewRows = await tx
+        .select()
+        .from(reviewResults)
+        .where(eq(reviewResults.contentItemId, id))
+        .orderBy(reviewResults.createdAt);
+
+      const composite = buildComposite(id, reviewRows, {
+        fallbackScore: row.qualityScore == null ? null : Number(row.qualityScore),
+      });
+      return { item, composite, reviews: reviewRowsToDtos(reviewRows) };
     });
   },
 

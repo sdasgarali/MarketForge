@@ -19,6 +19,9 @@ import { orgMemberships, organizations, users } from './schema/tenancy.js';
 
 const ORG_NAME = 'MarketForge Dev';
 const ORG_SLUG = 'marketforge-dev';
+// Pin a well-known org id so the web dashboard's default org matches the seed
+// (the web store defaults to this id). Override with SEED_ORG_ID.
+const ORG_ID = process.env.SEED_ORG_ID ?? '11111111-1111-1111-1111-111111111111';
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@marketforge.dev';
 const BRAND_NAME = 'Exzelon';
 
@@ -30,7 +33,7 @@ async function main(): Promise<void> {
     // 1) Organization (org_id-free; unique slug).
     const [org] = await db
       .insert(organizations)
-      .values({ name: ORG_NAME, slug: ORG_SLUG, plan: 'pro', status: 'active' })
+      .values({ id: ORG_ID, name: ORG_NAME, slug: ORG_SLUG, plan: 'pro', status: 'active' })
       .onConflictDoNothing({ target: organizations.slug })
       .returning();
 

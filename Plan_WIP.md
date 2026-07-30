@@ -36,6 +36,17 @@
 - [x] Built MVP monorepo: foundation (8 pkgs) + api + worker + web + real adapters + n8n workflows;
       19/19 typecheck, 11/11 build, 60 tests green; docker-compose (infra + `full` profile); README (2026-07-31)
 
+## API↔Web contract reconciliation (2026-07-31) — apps/api only  [DONE]
+- [x] 1. /analytics → AnalyticsSummary {by_platform, timeseries, totals} (30-day zero-filled)
+- [x] 2. /content-items list: accept platform/brand/campaign query keys + platform filter
+- [x] 3. contentItemToDto: add scheduled_at (publish_jobs join) + image_url (assets join)
+- [x] 4. /content-items/:id → { item, composite, reviews }
+- [x] 5. /approvals → Paginated<ApprovalItem> {content_item, composite, reviews, brand_name}
+- [x] 6. brandToDto: always emit approval_settings (default) — brand-detail derefs it
+- [x] 7. brands PATCH route added (PUT+PATCH share handler)
+- [x] 8. typecheck PASS · api tests 10/10 · curl-verified envelopes live
+Notes: image_url resolves from asset driveFileId (Drive URL); S3-only keys → undefined (needs signed-URL layer).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.

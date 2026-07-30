@@ -63,7 +63,14 @@ export function brandToDto(r: BrandRow) {
     languages: r.languages ?? ['en'],
     drive_folder_id: r.driveFolderId ?? undefined,
     publishing_schedule: r.publishingSchedule ?? undefined,
-    approval_settings: r.approvalSettings ?? undefined,
+    // Always emit approval_settings: the web brand-detail page dereferences
+    // `approval_settings.trust_tier` without a guard, so a missing value crashes
+    // the render. Fall back to the platform default (manual / min_score 90 / new).
+    approval_settings: (r.approvalSettings ?? {
+      mode: 'manual',
+      min_score: 90,
+      trust_tier: 'new',
+    }) as Record<string, unknown>,
     knowledge_base: r.knowledgeBase ?? undefined,
     status: r.status,
     created_at: iso(r.createdAt),
@@ -113,7 +120,17 @@ export function campaignToDto(r: CampaignRow) {
   });
 }
 
-export function contentItemToDto(r: ContentItemRow) {
+/**
+ * Extra, join-derived fields the web ContentItem consumes but that don't live on
+ * the content_items row itself: `scheduled_at` (from the item's publish_job) and
+ * `image_url` (resolved from its primary image asset).
+ */
+export interface ContentItemExtras {
+  scheduled_at?: Date | string | null;
+  image_url?: string | null;
+}
+
+export function contentItemToDto(r: ContentItemRow, extras: ContentItemExtras = {}) {
   return clean({
     id: r.id,
     org_id: r.orgId,
@@ -132,6 +149,8 @@ export function contentItemToDto(r: ContentItemRow) {
     parent_id: r.parentId ?? undefined,
     version: r.version,
     generated_at: iso(r.generatedAt),
+    scheduled_at: iso(extras.scheduled_at),
+    image_url: extras.image_url ?? undefined,
     created_at: iso(r.createdAt),
     updated_at: iso(r.updatedAt),
   });

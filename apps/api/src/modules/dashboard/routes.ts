@@ -6,13 +6,16 @@ import { Platform, Uuid } from '@marketforge/contracts';
 import { asyncHandler } from '../../lib/async-handler.js';
 import { getCtx } from '../../lib/context.js';
 import { parseOrThrow } from '../../lib/validate.js';
-import { PaginationQuery } from '../../lib/pagination.js';
 import { requireMinRole } from '../../middleware/rbac.js';
 import { dashboardService } from './service.js';
+import { z } from 'zod';
 
 export const dashboardRouter: Router = Router();
 
-const AnalyticsQuery = PaginationQuery.extend({
+// /analytics returns an aggregated AnalyticsSummary (not a paginated list), so
+// it takes a range + optional brand/platform filter rather than limit/offset.
+const AnalyticsQuery = z.object({
+  range: z.string().optional(),
   brand_id: Uuid.optional(),
   platform: Platform.optional(),
 });
@@ -32,12 +35,10 @@ dashboardRouter.get(
   asyncHandler(async (req, res) => {
     const ctx = getCtx(req);
     const q = parseOrThrow(AnalyticsQuery, req.query);
-    const rows = await dashboardService.analytics(
-      ctx.orgId,
-      { brandId: q.brand_id, platform: q.platform },
-      q.limit,
-      q.offset,
-    );
-    res.json({ items: rows, total: rows.length, limit: q.limit, offset: q.offset });
+    const summary = await dashboardService.analytics(ctx.orgId, {
+      brandId: q.brand_id,
+      platform: q.platform,
+    });
+    res.json(summary);
   }),
 );

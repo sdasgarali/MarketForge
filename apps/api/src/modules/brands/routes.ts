@@ -46,17 +46,19 @@ brandsRouter.post(
   }),
 );
 
-brandsRouter.put(
-  '/:id',
-  requireMinRole('editor'),
-  asyncHandler(async (req, res) => {
-    const ctx = getCtx(req);
-    const input = parseOrThrow(BrandCreateInput, req.body);
-    const brand = await brandsService.update(ctx.orgId, req.params.id!, input);
-    await writeAudit(ctx, { action: 'brand.update', entityType: 'brand', entityId: brand.id, after: brand }, req);
-    res.json(brand);
-  }),
-);
+// Update: the web brand-edit form submits the full BrandCreateInput via PATCH
+// (useUpdateBrand). Support PATCH and PUT with the same handler so the edit
+// dialog persists on live data.
+const updateHandler = asyncHandler(async (req, res) => {
+  const ctx = getCtx(req);
+  const input = parseOrThrow(BrandCreateInput, req.body);
+  const brand = await brandsService.update(ctx.orgId, req.params.id!, input);
+  await writeAudit(ctx, { action: 'brand.update', entityType: 'brand', entityId: brand.id, after: brand }, req);
+  res.json(brand);
+});
+
+brandsRouter.put('/:id', requireMinRole('editor'), updateHandler);
+brandsRouter.patch('/:id', requireMinRole('editor'), updateHandler);
 
 brandsRouter.delete(
   '/:id',

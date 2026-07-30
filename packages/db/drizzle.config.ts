@@ -17,8 +17,11 @@ if (!url) {
 }
 
 export default defineConfig({
+  // Point at the COMPILED schema (real .js) — drizzle-kit's bundler can't follow
+  // NodeNext '.js' import specifiers back to their '.ts' sources. Build the package
+  // before `db:generate`. Tables are re-exported from the built index.
   dialect: 'postgresql',
-  schema: './src/schema/index.ts',
+  schema: './dist/index.js',
   out: './drizzle',
   dbCredentials: { url },
   strict: true,
