@@ -42,3 +42,7 @@ n8n-data/
 
 # Misc
 *.local
+
+# local runtime
+n8n.log
+.env

@@ -13,11 +13,12 @@
   Video: **deferred to Phase 3**, roster includes **Kling (via fal)**.
 
 ## Immediate TODO
-- [ ] DECIDE §2a: MVP publisher tier — **Ayrshare Premium (~$149)** vs **self-host Postiz (free)**
-- [ ] Answer remaining questions 5–8 (scale / quality rubric / hosting / legal) — not blocking scaffolding
-- [ ] Approve go-ahead to bootstrap the monorepo
-- [ ] Bootstrap monorepo (pnpm + Turborepo) + Docker Compose (Postgres/Redis/n8n) + `.env` scheme + CI skeleton
-- [ ] Stand up Clerk auth + orgs mirrored to Postgres (RLS)
+- [ ] Provision infra: `docker compose up -d` → `db:migrate` → `db:seed` → `pnpm dev`; end-to-end smoke test the loop
+- [ ] Provide real API keys in `.env` (Anthropic, fal, Ayrshare, S3, Clerk) to exercise adapters live
+- [ ] DECIDE §2a: MVP publisher tier — **Ayrshare Premium (~$149)** vs **self-host Postiz (free)** (adapter already swappable)
+- [ ] Answer remaining questions 5–8 (scale / quality rubric / hosting / legal)
+- [ ] CI pipeline (GitHub Actions: install/typecheck/test/build) + push to a remote
+- [ ] Phase 2 breadth (LinkedIn/YouTube, full review suite, remaining agents, billing) per Master_Plan
 
 ## Completed
 - [x] n8n running locally on :5678, owner account created (2026-07-30)
@@ -25,6 +26,8 @@
 - [x] Standalone Social Post Scheduler workflow built — `social-post-scheduler.workflow.json` (2026-07-30, parked)
 - [x] Analyzed prompt.txt; 4-stream requirements research → `research/*.md` (2026-07-30)
 - [x] Locked architecture decisions; wrote CLAUDE.md, Master_Plan.md, CLAUDE_REFERENCE/ (2026-07-30)
+- [x] Built MVP monorepo: foundation (8 pkgs) + api + worker + web + real adapters + n8n workflows;
+      19/19 typecheck, 11/11 build, 60 tests green; docker-compose (infra + `full` profile); README (2026-07-31)
 
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,

@@ -30,3 +30,6 @@ export {
   StubPublisherAdapter,
   StubStorageAdapter,
 } from './stubs/index.js';
+
+// Real provider implementations (ADR-007) — concrete adapters + helpers.
+export * from './impl/index.js';

@@ -7,8 +7,10 @@
 Enterprise, multi-brand, AI-powered marketing-automation SaaS (HubSpot/Buffer/Jasper-class).
 Core loop: **Research → Generate (copy/image/video/voice) → AI Review/Score → Approve → Schedule → Publish → Analytics → Optimize**, for many brands, minimal human touch. Source spec: `prompt.txt`.
 
-**Status:** PLANNING phase (Phase 0). No app code yet. Do NOT start building until the
-remaining open questions in `Master_Plan.md` are answered and Phase 1 scope is approved.
+**Status:** MVP SCAFFOLD BUILT (Phase 1 in progress). Monorepo compiles/typechecks/tests green
+(19/19 typecheck, 11/11 build, 60 tests). Adapters call real SDKs but are inert without API keys.
+Next: provision infra (`docker compose up`), migrate+seed, wire real keys, end-to-end smoke test.
+See `README.md` to run. Remaining product questions (scale/quality-rubric/hosting/legal) in `Master_Plan.md §2`.
 
 ## MVP scope — LOCKED 2026-07-31
 - **Platforms:** **X + Instagram** only (least-gated; via aggregator).

@@ -6,6 +6,9 @@
 > Layer order: root tooling → contracts+config+logger (base layer) → db/queue/secrets/auth/adapters
 > (parallel, each owns its own package dir) → integrator (pnpm install + typecheck + git commit).
 
+## STATUS: COMPLETE — pnpm install OK, `pnpm build` 8/8 OK, `pnpm typecheck` 11/11 OK,
+## secrets tests 7/7 OK, committed `chore: bootstrap MarketForge monorepo foundation`.
+
 ## Build order (dependency-respecting)
 - [x] Read ADRs, prompt.txt, research data model
 - [ ] Root: package.json, pnpm-workspace.yaml, turbo.json, tsconfig.base.json, tsconfig.json,

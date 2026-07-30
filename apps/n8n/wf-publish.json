@@ -1,0 +1,184 @@
+{
+  "name": "mf-publish-v1",
+  "active": false,
+  "tags": ["marketforge", "publish", "ayrshare"],
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "wf-error-handler"
+  },
+  "nodes": [
+    {
+      "id": "trigger-webhook",
+      "name": "Webhook — POST wf-publish",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "mf-publish",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf-publish",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      }
+    },
+    {
+      "id": "validate-hmac",
+      "name": "Validate HMAC Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "// HMAC-SHA256: header x-mf-signature = 'sha256=' + hex(HMAC(secret, rawBody))\n// Secret comes from n8n env var N8N_WEBHOOK_SECRET (injected at container boot).\nconst crypto = require('crypto');\n\nconst secret = process.env.N8N_WEBHOOK_SECRET;\nif (!secret) {\n  throw new Error('N8N_WEBHOOK_SECRET env var not set on n8n container');\n}\n\nconst rawBody = $input.first().binary?.data\n  ? Buffer.from($input.first().binary.data, 'base64').toString()\n  : JSON.stringify($input.first().json);\n\nconst incomingSig = $input.first().headers?.['x-mf-signature'] ?? '';\nconst expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');\n\nif (!crypto.timingSafeEqual(Buffer.from(incomingSig), Buffer.from(expected))) {\n  throw new Error('HMAC signature mismatch — request rejected');\n}\n\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "validate-payload",
+      "name": "Validate & Normalise Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300],
+      "parameters": {
+        "jsCode": "// Required fields: org_id, content_item_id, platforms[], post{text}, profileKey\n// Optional: post.title, post.hashtags[], media[]{url, kind}\n\nconst body = $input.first().json;\n\nconst required = ['org_id', 'content_item_id', 'platforms', 'post', 'profileKey'];\nconst missing = required.filter(k => body[k] === undefined || body[k] === null || body[k] === '');\nif (missing.length) {\n  throw new Error(`Missing required fields: ${missing.join(', ')}`);\n}\nif (!Array.isArray(body.platforms) || body.platforms.length === 0) {\n  throw new Error('platforms must be a non-empty array');\n}\nif (typeof body.post?.text !== 'string' || !body.post.text.trim()) {\n  throw new Error('post.text must be a non-empty string');\n}\n\n// Platform name mapping: our internal name -> Ayrshare accepted names\nconst PLATFORM_MAP = {\n  x: 'twitter',\n  instagram: 'instagram',\n  facebook: 'facebook',\n  linkedin: 'linkedin',\n  youtube: 'youtube',\n  tiktok: 'tiktok',\n};\n\nconst mappedPlatforms = body.platforms.map(p => {\n  const mapped = PLATFORM_MAP[p];\n  if (!mapped) throw new Error(`Unknown platform: ${p}`);\n  return mapped;\n});\n\n// Instagram requires at least one media item; YouTube requires a video.\nconst hasInstagram = body.platforms.includes('instagram');\nconst hasYoutube = body.platforms.includes('youtube');\nconst media = Array.isArray(body.media) ? body.media : [];\n\nif (hasInstagram && media.length === 0) {\n  throw new Error('Instagram requires at least one media item in body.media');\n}\nif (hasYoutube) {\n  const hasVideo = media.some(m => m.kind === 'video');\n  if (!hasVideo) throw new Error('YouTube requires a video item in body.media');\n}\n\n// Build Ayrshare-compatible post body\nconst ayrsharePost = {\n  post: body.post.text,\n  platforms: mappedPlatforms,\n  ...(body.post.hashtags?.length ? { hashtags: body.post.hashtags } : {}),\n  ...(body.post.title ? { title: body.post.title } : {}),\n  ...(media.length > 0 ? { mediaUrls: media.map(m => m.url) } : {}),\n};\n\nreturn [{\n  json: {\n    _meta: {\n      org_id: body.org_id,\n      content_item_id: body.content_item_id,\n      originalPlatforms: body.platforms,\n    },\n    profileKey: body.profileKey,\n    ayrsharePost,\n  }\n}];"
+      }
+    },
+    {
+      "id": "post-ayrshare",
+      "name": "Ayrshare — POST /api/post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.ayrshare.com/api/post",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Profile-Key",
+              "value": "={{ $json.profileKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify($json.ayrsharePost) }}",
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ayrshare-api-key",
+          "name": "Ayrshare API Key"
+        }
+      }
+    },
+    {
+      "id": "normalise-response",
+      "name": "Normalise Publish Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300],
+      "parameters": {
+        "jsCode": "const meta = $('Validate & Normalise Payload').first().json._meta;\nconst ayrRes = $input.first().json;\nconst statusCode = $input.first().json?.statusCode ?? 200;\n\n// Ayrshare success: { status:'success', postIds:[{platform, id, postUrl}] }\n// Ayrshare error:  { status:'error', errors:[{action, log, platform}] }\n\nlet results = [];\n\nconst PLATFORM_REVERSE_MAP = {\n  twitter: 'x',\n  instagram: 'instagram',\n  facebook: 'facebook',\n  linkedin: 'linkedin',\n  youtube: 'youtube',\n  tiktok: 'tiktok',\n};\n\nif (ayrRes.status === 'success' && Array.isArray(ayrRes.postIds)) {\n  results = ayrRes.postIds.map(entry => ({\n    platform: PLATFORM_REVERSE_MAP[entry.platform] ?? entry.platform,\n    externalPostId: entry.id ?? null,\n    postUrl: entry.postUrl ?? null,\n    status: 'published',\n    error: null,\n  }));\n} else {\n  // Error or partial failure — map errors array or synthesise from top-level error\n  const errors = Array.isArray(ayrRes.errors) ? ayrRes.errors : [];\n  results = meta.originalPlatforms.map(p => {\n    const platformErr = errors.find(e => (PLATFORM_REVERSE_MAP[e.platform] ?? e.platform) === p);\n    return {\n      platform: p,\n      externalPostId: null,\n      postUrl: null,\n      status: 'failed',\n      error: platformErr?.log ?? ayrRes.message ?? `HTTP ${statusCode}`,\n    };\n  });\n}\n\nreturn [{ json: { results, _meta: meta } }];"
+      }
+    },
+    {
+      "id": "respond-ok",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 240],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ results: $json.results }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "on-error",
+      "name": "On Validation / HTTP Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 520],
+      "parameters": {
+        "jsCode": "// Build a normalised failure response so the worker always gets a consistent shape.\nconst err = $input.first().json?.error ?? $input.first().json?.message ?? 'Unknown error in wf-publish';\nconst body = $('Webhook — POST wf-publish').first()?.json ?? {};\n\nreturn [{\n  json: {\n    results: (body.platforms ?? ['unknown']).map(p => ({\n      platform: p,\n      externalPostId: null,\n      postUrl: null,\n      status: 'failed',\n      error: String(err),\n    })),\n    _error: String(err),\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-error",
+      "name": "Respond Error to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 520],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ results: $json.results, error: $json._error }) }}",
+        "options": {
+          "responseCode": 422,
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — POST wf-publish": {
+      "main": [
+        [{ "node": "Validate HMAC Signature", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate HMAC Signature": {
+      "main": [
+        [{ "node": "Validate & Normalise Payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate & Normalise Payload": {
+      "main": [
+        [{ "node": "Ayrshare — POST /api/post", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ayrshare — POST /api/post": {
+      "main": [
+        [{ "node": "Normalise Publish Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalise Publish Response": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {}
+}
