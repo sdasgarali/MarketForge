@@ -1,7 +1,12 @@
 /**
- * FalVideoAdapter — text/image-to-video via fal.ai's queue API (Phase 3,
- * gated). Per ADR-007, Kling is integrated **via fal's queue API, NOT Kling's
- * native API**. Veo / Runway / Hailuo are selectable by `modelHint`.
+ * FalVideoAdapter — text/image-to-video via fal.ai's queue API. Per ADR-007,
+ * Kling is integrated **via fal's queue API, NOT Kling's native API**, and is
+ * the DEFAULT model when no `modelHint` is supplied (see resolveModel). Veo /
+ * Runway / Hailuo remain selectable by `modelHint`.
+ *
+ * MEDIA-SCOPE: the worker drives this adapter for short-form clips (<=15s) and
+ * the silent source clip behind GIF export. `withAudio:false` is honoured
+ * (silent) — audio is only enabled for audio-capable models when requested.
  *
  * All these models cap at ~5–10s per generation; longer content is produced by
  * stitching segments upstream. Only Veo/Runway/Kling carry native audio, so

@@ -87,6 +87,37 @@ export function imagePromptCraftPrompt(input: {
     .join('\n');
 }
 
+export const POSTER_PROMPT_SYSTEM =
+  'You are an expert poster / key-visual designer. Turn a brief into a single ' +
+  'bold, text-strong poster prompt: a striking graphic with a short punchy ' +
+  'HEADLINE rendered legibly, strong hierarchy, high contrast, and ample negative ' +
+  'space for the headline. Output ONLY the prompt text, no preamble.';
+
+/**
+ * Poster style (content_type/style = 'poster'): a bold static graphic with a
+ * legible headline. Routed to a text-strong image model (modelHint 'ideogram').
+ */
+export function posterPromptCraftPrompt(input: {
+  headline?: string;
+  caption?: string;
+  brandContext: string;
+  imageStyle?: string;
+  platform: string;
+}): string {
+  return [
+    `Craft a POSTER / key-visual image prompt for a ${input.platform} post.`,
+    'It must read as a graphic poster with a bold, legible HEADLINE (not a photo).',
+    input.headline ? `Headline text to render: "${input.headline}".` : '',
+    input.caption ? `Supporting message: ${input.caption}.` : '',
+    input.brandContext ? `Brand: ${input.brandContext}.` : '',
+    input.imageStyle ? `Visual style: ${input.imageStyle}.` : '',
+    'Emphasise strong typography, high contrast, clear hierarchy, and negative space.',
+    'Return only the final poster image prompt as plain text.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export const REVIEWER_SYSTEM =
   'You are a meticulous content QA reviewer. Score the content for the given ' +
   'check on a 0-100 scale and explain briefly. Output STRICT JSON only.';

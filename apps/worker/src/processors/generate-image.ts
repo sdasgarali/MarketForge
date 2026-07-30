@@ -16,7 +16,7 @@ import { defineProcessor } from './base.js';
 import { TerminalError, toError } from '../lib/errors.js';
 import { getBrand, brandContextLine, brandPrefix } from '../lib/brand.js';
 import { getContentItem, isReadyForReview } from '../lib/content.js';
-import { runImagePromptAgent } from '../agents/image-prompt.agent.js';
+import { runImagePromptAgent, imageModelHint } from '../agents/image-prompt.agent.js';
 
 /** Build a deterministic storage key for a generated image. */
 function imageKey(orgId: string, brandId: string, contentItemId: string | undefined, idx: number): string {
@@ -29,11 +29,14 @@ export const generateImageProcessor = defineProcessor('generate-image', async ({
   if (!brand_id) throw new TerminalError('generate-image job requires brand_id');
 
   // 1) Craft a refined prompt using brand style (LLM call, logged).
-  const refinedPrompt = await withTenant(db, org_id, async (tx) => {
+  // Poster style (content_type = 'poster') → bold headline graphic routed to a
+  // text-strong model (ideogram, ADR-007).
+  const crafted = await withTenant(db, org_id, async (tx) => {
     const brand = await getBrand(tx, brand_id);
     if (!brand) throw new TerminalError(`brand not found: ${brand_id}`);
     const item = payload.content_item_id ? await getContentItem(tx, payload.content_item_id) : undefined;
-    return runImagePromptAgent(
+    const isPoster = item?.contentType === 'poster';
+    const prompt = await runImagePromptAgent(
       log,
       {
         workflow: 'generate-image',
@@ -49,17 +52,23 @@ export const generateImageProcessor = defineProcessor('generate-image', async ({
         imageStyle: brand.imageStyle ?? undefined,
         platform: item?.platform ?? 'x',
         brandPrefix: brandPrefix(brand, org_id),
+        poster: isPoster,
+        headline: isPoster ? (item?.title ?? undefined) : undefined,
       },
     );
+    return { prompt, isPoster };
   });
+  const refinedPrompt = crafted.prompt;
 
   // 2) Generate the image(s). The image adapter emits GeneratedImage[].
+  // Posters force a text-strong model hint unless the caller supplied one.
+  const modelHint = payload.model_hint ?? imageModelHint({ poster: crafted.isPoster });
   const images = await adapters.image.generateImage({
     prompt: refinedPrompt || payload.prompt,
     negativePrompt: payload.negative_prompt,
     aspectRatio: payload.aspect_ratio,
     count: payload.count,
-    modelHint: payload.model_hint,
+    modelHint,
   });
   if (images.length === 0) throw new TerminalError('image adapter returned no images');
 

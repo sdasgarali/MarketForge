@@ -86,6 +86,18 @@ export const envSchema = z.object({
     .default('info'),
   LOG_PRETTY: booleanish.default(false),
 
+  // --- Media / video scope (MEDIA-SCOPE: Kling short-form + GIF + posters) ---
+  // Long-form/big video is PAUSED by default; `VIDEO_ALLOW_LONGFORM` is the single
+  // re-enable switch. `WORKER_ENABLE_VIDEO` is the legacy gate — kept for back-compat
+  // and mapped onto VIDEO_ENABLED by the loader (see resolveVideoEnabled).
+  VIDEO_ENABLED: booleanish.default(true),
+  VIDEO_ALLOW_LONGFORM: booleanish.default(false),
+  VIDEO_SHORT_MAX_S: z.coerce.number().positive().default(15),
+  GIF_MAX_S: z.coerce.number().positive().default(6),
+  VIDEO_DEFAULT_MODEL: z.string().min(1).default('kling'),
+  /** @deprecated legacy Phase-3 gate; mapped onto VIDEO_ENABLED. */
+  WORKER_ENABLE_VIDEO: booleanish.optional(),
+
   // --- App ports/urls ---
   API_PORT: z.coerce.number().int().positive().default(8080),
   API_BASE_URL: z.string().url().default('http://localhost:8080'),

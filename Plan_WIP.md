@@ -21,6 +21,13 @@
 - [ ] Phase 2 breadth (LinkedIn/YouTube, full review suite, remaining agents, billing) per Master_Plan
 
 ## Completed
+- [x] MEDIA-SCOPE: scoped video to **Kling short-form (≤15s) + GIF export + poster images**; long-form
+      PAUSED (skip + notify, no spend) behind `VIDEO_ALLOW_LONGFORM`. Added config env vars
+      (VIDEO_ENABLED/ALLOW_LONGFORM/SHORT_MAX_S, GIF_MAX_S, VIDEO_DEFAULT_MODEL; legacy WORKER_ENABLE_VIDEO
+      mapped for back-compat), contracts (generate-video output_format+longform, ContentType 'poster'),
+      pure `resolveMediaPlan` + 15 unit tests, rewrote generate-video processor (short/gif/paused),
+      ffmpeg-static gif export helper w/ graceful fallback, poster prompt + ideogram routing. Docs updated
+      (CLAUDE.md, ADR-007, Master_Plan). typecheck 19/19, tests green (worker 23). (2026-07-31)
 - [x] n8n running locally on :5678, owner account created (2026-07-30)
 - [x] Exzelon tracker uploaded to Google Sheets (2026-07-30)
 - [x] Standalone Social Post Scheduler workflow built — `social-post-scheduler.workflow.json` (2026-07-30, parked)

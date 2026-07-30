@@ -67,8 +67,29 @@ meters a shared quota-unit pool — bursty 10k-assets/day fan-outs would stall o
 model by task + cost + fallback chain.
 - Copywriting → **Claude Sonnet 4.6**; QA/review/reasoning → **Claude Opus 4.8**; bulk tags/hashtags → **Gemini Flash-Lite / Groq** (batched).
 - Images → **`nano-banana-2` MCP** workhorse + **fal** (Ideogram v3 / Seedream 4.0 for text-heavy, FLUX Kontext for edits). Self-host Flux/SDXL on ComfyUI for bulk at scale (break-even ~1k+ imgs/day).
-- Video (Phase 3) → **Veo 3.1 (`google-veo-3-1` MCP)** + Runway Gen-4 + **Kling** + fal (Hailuo/Pika). All cap 5–10s/gen → design for stitched segments; only Veo/Runway/Kling carry native audio.
-  - **Kling (user-requested):** integrate **via fal.ai's queue API**, NOT Kling's native API (native requires ~$4.2k prepaid + lacks clean webhooks/batch). fal Kling pricing ~$0.28/s. Keep behind the same `VideoAdapter`.
+- Video (MEDIA-SCOPE — short-only, revised 2026-07-31) → **Kling short-form (via fal) is the DEFAULT and
+  only enabled video path**, plus **GIF loops** and **poster images**. Roster (Veo 3.1 / Runway / Hailuo)
+  stays selectable by `modelHint` but big/long-form is **PAUSED**. All cap 5–10s/gen; only Veo/Runway/Kling
+  carry native audio.
+  - **Kling (default):** integrate **via fal.ai's queue API**, NOT Kling's native API (native requires ~$4.2k
+    prepaid + lacks clean webhooks/batch). fal Kling pricing ~$0.28/s. Behind the same `VideoAdapter`;
+    `resolveModel` returns Kling when no `modelHint`. `withAudio:false` honoured (silent).
+  - **Short cap = 15s** (`VIDEO_SHORT_MAX_S`). `duration_s > cap` OR an explicit `longform:true` request
+    ⇒ **PAUSED**: the worker sets the content item to `needs_media` (terminal-but-OK, NOT failed), enqueues a
+    `notify` warning ("Long-form video paused"), writes an audit row, and returns — the video adapter is
+    **never called** (zero spend). The single re-enable switch is `VIDEO_ALLOW_LONGFORM` (default false).
+  - **GIF** (`output_format:'gif'`) = a short **3–6s SILENT** Kling clip (`GIF_MAX_S`), exported to `.gif`
+    via **ffmpeg-static** (worker `src/lib/gif.ts`, invoked through `node:child_process`). BOTH the mp4
+    (kind=video) and the gif (kind=gif) are stored. If ffmpeg is unavailable at runtime, degrade: store the
+    silent mp4 tagged as gif-style + notify (no crash). No ffmpeg in the adapter — the worker owns gif export.
+  - **Poster** = a bold static graphic/headline image (content_type `poster`, image-kind asset). The
+    image-prompt agent crafts a text-strong headline prompt and routes to `modelHint:'ideogram'`.
+  - **Decision function:** pure `resolveMediaPlan(input, config)` in the worker (`src/lib/media-policy.ts`,
+    unit-tested) maps payload+env → `{ action: 'short'|'gif'|'paused', model, durationS, withAudio,
+    outputFormat, reason }`.
+  - **Config:** `VIDEO_ENABLED` (true), `VIDEO_ALLOW_LONGFORM` (false), `VIDEO_SHORT_MAX_S` (15),
+    `GIF_MAX_S` (6), `VIDEO_DEFAULT_MODEL` (kling). Legacy `WORKER_ENABLE_VIDEO` is mapped onto
+    `VIDEO_ENABLED` by the config loader (back-compat).
 - Voice + subtitles → **ElevenLabs** (subtitles via `with-timestamps`, no separate STT).
 **Ready backends:** connected MCP servers `fal`, `nano-banana-2`, `google-veo-3-1`, `higgsfield`,
 `suno`, `elevenlabs` map 1:1 onto generation adapters.
