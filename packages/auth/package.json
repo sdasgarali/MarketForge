@@ -21,6 +21,7 @@
     "clean": "rimraf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@clerk/backend": "^2.33.6",
     "@marketforge/config": "workspace:*",
     "@marketforge/contracts": "workspace:*",
     "@marketforge/logger": "workspace:*"

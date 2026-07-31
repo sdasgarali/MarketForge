@@ -32,9 +32,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@clerk/backend':
-        specifier: ^2.33.6
-        version: 2.33.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@marketforge/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
@@ -342,6 +339,9 @@ importers:
 
   packages/auth:
     dependencies:
+      '@clerk/backend':
+        specifier: ^2.33.6
+        version: 2.33.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@marketforge/config':
         specifier: workspace:*
         version: link:../config
