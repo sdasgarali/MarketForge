@@ -4,7 +4,7 @@
  * (kill switch + pause + obliterate all queues).
  */
 import { desc, eq } from 'drizzle-orm';
-import { brands, db, notifications, organizations, withTenant } from '@marketforge/db';
+import { brands, campaigns, db, notifications, organizations, withTenant } from '@marketforge/db';
 import { getOrgLlm, orgHasLlm } from '../../lib/org-llm.js';
 import {
   JOB_NAMES,
@@ -172,21 +172,51 @@ export const pipelinesService = {
       tx.select({ id: brands.id, name: brands.companyName }).from(brands),
     );
     const idByName = new Map(brandRows.map((b) => [b.name.toLowerCase(), b.id]));
+    const today = new Date().toISOString().slice(0, 10);
 
-    await Promise.all(
-      plans.map((plan) => {
+    const runCampaigns = await Promise.all(
+      plans.map(async (plan) => {
         const brandId = idByName.get(plan.brand.toLowerCase());
-        return enqueue('research', {
+        // A pipeline run == a campaign, so it shows up in the Campaigns section.
+        let campaignId: string | undefined;
+        if (brandId) {
+          const [camp] = await withTenant(db, orgId, (tx) =>
+            tx
+              .insert(campaigns)
+              .values({
+                orgId,
+                brandId,
+                name: `${plan.brand} · ${platform} · ${today}`,
+                campaignType: 'pipeline',
+                platform,
+                topic: `~${plan.target_seconds}s (${plan.rounds}×${plan.clip_seconds}s) → ${plan.folder_template}`,
+                status: 'queued',
+                autoMode: true,
+              })
+              .returning({ id: campaigns.id }),
+          );
+          campaignId = camp?.id;
+        }
+        await enqueue('research', {
           org_id: orgId,
           ...(brandId ? { brand_id: brandId } : {}),
+          ...(campaignId ? { campaign_id: campaignId } : {}),
           platform,
           attempt_reason: 'manual',
           topic: `${plan.brand} · ${platform} · ~${plan.target_seconds}s (${plan.rounds}×${plan.clip_seconds}s) → ${plan.folder_template}`,
         });
+        return { brand: plan.brand, campaign_id: campaignId ?? null };
       }),
     );
-    const matched = plans.filter((p) => idByName.has(p.brand.toLowerCase())).length;
-    return { started: true, runs: plans.length, matched_brands: matched, platform, plans };
+    const matched = runCampaigns.filter((c) => c.campaign_id).length;
+    return {
+      started: true,
+      runs: plans.length,
+      matched_brands: matched,
+      platform,
+      plans,
+      campaigns: runCampaigns,
+    };
   },
 
   /** Force shutdown — engage kill switch + pause + obliterate EVERY queue. */
