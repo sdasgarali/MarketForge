@@ -52,6 +52,27 @@
 - [x] 8. typecheck PASS · api tests 10/10 · curl-verified envelopes live
 Notes: image_url resolves from asset driveFileId (Drive URL); S3-only keys → undefined (needs signed-URL layer).
 
+## VPS + Vercel deploy (2026-07-31) — IN PROGRESS
+Decision: web → Vercel, backend → shared Hostinger VPS (187.124.74.175). API domain
+`marketforge-api.neuraforz.com`; auth = **Clerk prod** (pilot).
+- [x] Repo pushed to GitHub `sdasgarali/MarketForge`.
+- [x] Deploy assets: `docker-compose.prod.yml` (APP_ENV=PROD, bypass off, api loopback via `!override`),
+      `scripts/deploy.sh`, `docs/DEPLOYMENT_PLAN.md`. Dockerfile fixes: `migrator` stage (db:push/seed),
+      worker builds full dep closure (`@marketforge/worker...`).
+- [x] VPS backend LIVE via Docker: mf-postgres :5433, mf-redis :6380, mf-n8n :5679,
+      **mf-api 127.0.0.1:8090 (/health 200)**, mf-worker (healthy, 9 processors, PROD). DB pushed + seeded
+      (17 tables, Exzelon brand). Secrets generated on-box in `/opt/marketforge/.env` (chmod 600).
+- [x] nginx site `marketforge-api.neuraforz.com` → 127.0.0.1:8090 (HTTP; 200 verified via Host header).
+- [ ] **USER ACTION 1 — DNS**: create A record `marketforge-api.neuraforz.com` → 187.124.74.175. Then I run
+      `certbot --nginx -d marketforge-api.neuraforz.com` for HTTPS.
+- [ ] **USER ACTION 2 — Clerk keys**: provide prod `CLERK_SECRET_KEY` + `CLERK_PUBLISHABLE_KEY` (+ JWT key
+      if used). I add secret → VPS `.env` (`PROD_CLERK_*`) + restart mf-api; publishable → Vercel env.
+- [ ] Vercel: deploy `apps/web` (root dir apps/web, Turbo monorepo), env `NEXT_PUBLIC_API_BASE_URL=
+      https://marketforge-api.neuraforz.com` + Clerk publishable. Then set API `API_CORS_ORIGINS` to the
+      real Vercel origin + restart mf-api.
+- [ ] Known follow-up: Clerk org ↔ Postgres org mirroring (seeded org id is `1111…1111`; real Clerk login
+      must map to an org for RLS scoping). Also: no committed SQL migrations — prod uses `db:push` (tech-debt).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
