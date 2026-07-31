@@ -1,0 +1,36 @@
+# =============================================================================
+# MarketForge — PRODUCTION overlay for the shared VPS (used WITH docker-compose.yml)
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml ...
+#
+# What it changes vs the dev base:
+#   - App services run APP_ENV=PROD with DEV_AUTH_BYPASS disabled (the loader
+#     FORBIDS bypass under PROD). Real config comes from the VPS `.env`
+#     (PROD_* prefixed keys + Clerk + encryption secrets), injected via env_file.
+#   - `web` is NOT run here (the frontend is hosted on Vercel) — simply omit it
+#     from `up`. Ports for postgres/redis/n8n are remapped via `.env`
+#     (DB_HOST_PORT=5433, REDIS_HOST_PORT=6380, N8N_PORT=5679, API_PORT=8080).
+#
+# Bring-up (see scripts/deploy.sh):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full run --rm migrate
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full up -d postgres redis n8n api worker
+# =============================================================================
+name: marketforge
+
+services:
+  migrate:
+    environment:
+      APP_ENV: PROD
+      DEV_AUTH_BYPASS: '0'
+
+  api:
+    environment:
+      APP_ENV: PROD
+      DEV_AUTH_BYPASS: '0'
+    # API is reached from the public internet only through nginx (127.0.0.1:8080).
+    ports:
+      - '127.0.0.1:${API_PORT:-8080}:8080'
+
+  worker:
+    environment:
+      APP_ENV: PROD
+      DEV_AUTH_BYPASS: '0'
