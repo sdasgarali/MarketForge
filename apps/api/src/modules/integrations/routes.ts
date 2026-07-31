@@ -62,6 +62,22 @@ integrationsRouter.post(
   }),
 );
 
+integrationsRouter.post(
+  '/google_drive/test-upload',
+  requireMinRole('admin'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    try {
+      res.json(await integrationsService.testUpload(ctx.orgId));
+    } catch (err) {
+      res.status(200).json({
+        ok: false,
+        error: err instanceof Error ? err.message : 'Upload test failed',
+      });
+    }
+  }),
+);
+
 integrationsRouter.delete(
   '/:provider',
   requireMinRole('admin'),

@@ -184,6 +184,30 @@ export const integrationsService = {
     return { ok: true, provider: providerId, detail: { configured: true } };
   },
 
+  /** Prove the Drive write path: create <root>/MarketForge/connectivity-test/ + upload a marker file. */
+  async testUpload(orgId: string) {
+    const values = await this.resolve(orgId, 'google_drive');
+    if (!values) throw new NotFoundError('google_drive is not configured');
+    const client = new GDriveClient({
+      clientEmail: values.clientEmail ?? '',
+      privateKey: values.privateKey ?? '',
+      rootFolderId: values.rootFolderId || undefined,
+    });
+    const folderId = await client.ensureFolderPath(['MarketForge', 'connectivity-test']);
+    const file = await client.uploadFile(
+      `marketforge-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`,
+      Buffer.from('Connected by MarketForge — Drive write path verified.\n'),
+      'text/plain',
+      folderId,
+    );
+    return {
+      ok: true,
+      folder: 'MarketForge/connectivity-test',
+      file_id: file.id,
+      web_view_link: file.webViewLink ?? null,
+    };
+  },
+
   /** Decrypt a provider's stored credentials (for the worker/adapters). */
   async resolve(orgId: string, providerId: string): Promise<Record<string, string> | null> {
     const kind = kindFor(providerId);
