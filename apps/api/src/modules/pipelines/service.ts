@@ -4,7 +4,7 @@
  * (kill switch + pause + obliterate all queues).
  */
 import { eq } from 'drizzle-orm';
-import { db, organizations } from '@marketforge/db';
+import { brands, db, organizations, withTenant } from '@marketforge/db';
 import {
   JOB_NAMES,
   type JobName,
@@ -147,17 +147,27 @@ export const pipelinesService = {
       opts.brands && opts.brands.length ? opts.brands : [...COMPANIES];
     const plans = targets.map((b) => buildRunPlan(b, platform));
 
+    // Map brand NAMES to real brand records so the research job carries a valid
+    // brand_id (and the run actually uses that brand's context).
+    const brandRows = await withTenant(db, orgId, (tx) =>
+      tx.select({ id: brands.id, name: brands.companyName }).from(brands),
+    );
+    const idByName = new Map(brandRows.map((b) => [b.name.toLowerCase(), b.id]));
+
     await Promise.all(
-      plans.map((plan) =>
-        enqueue('research', {
+      plans.map((plan) => {
+        const brandId = idByName.get(plan.brand.toLowerCase());
+        return enqueue('research', {
           org_id: orgId,
+          ...(brandId ? { brand_id: brandId } : {}),
           platform,
           attempt_reason: 'manual',
           topic: `${plan.brand} · ${platform} · ~${plan.target_seconds}s (${plan.rounds}×${plan.clip_seconds}s) → ${plan.folder_template}`,
-        }),
-      ),
+        });
+      }),
     );
-    return { started: true, runs: plans.length, platform, plans };
+    const matched = plans.filter((p) => idByName.has(p.brand.toLowerCase())).length;
+    return { started: true, runs: plans.length, matched_brands: matched, platform, plans };
   },
 
   /** Force shutdown — engage kill switch + pause + obliterate EVERY queue. */
