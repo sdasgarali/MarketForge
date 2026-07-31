@@ -18,6 +18,15 @@ name: marketforge
 
 services:
   migrate:
+    # Build the migrator target (keeps tsx + drizzle-kit) and apply the schema
+    # via db:push — no committed SQL migrations exist (drizzle-kit generate can't
+    # follow the split-schema .js specifiers). Seed is run one-off against the
+    # same image: `... run --rm migrate pnpm --filter @marketforge/db db:seed`.
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrator
+    command: ['pnpm', '--filter', '@marketforge/db', 'db:push']
     environment:
       APP_ENV: PROD
       DEV_AUTH_BYPASS: '0'

@@ -18,6 +18,15 @@ RUN pnpm install --frozen-lockfile
 # Build workspace deps then the API.
 RUN pnpm --filter @marketforge/api... build
 
+# ---- Migrator -------------------------------------------------------------
+# Keeps the full dependency set (tsx + drizzle-kit) from the build stage so the
+# db package's `db:push` (programmatic schema apply — drizzle-kit generate can't
+# follow our split-schema .js specifiers) and `db:seed` can run. Used only by
+# the one-off `migrate` compose service, never by the long-running api/worker.
+FROM build AS migrator
+WORKDIR /repo
+CMD ["pnpm", "--filter", "@marketforge/db", "db:push"]
+
 # ---- Runtime --------------------------------------------------------------
 FROM base AS runtime
 ENV NODE_ENV=production
