@@ -10,39 +10,77 @@
  */
 import { eq } from 'drizzle-orm';
 import { adapters } from '@marketforge/adapters';
-import { db, withTenant, assets } from '@marketforge/db';
+import { assets, contentItems, db, withTenant } from '@marketforge/db';
 import { defineProcessor } from './base.js';
 import { TerminalError, toError } from '../lib/errors.js';
+import { getBrand } from '../lib/brand.js';
+import { getOrgDrive } from '../lib/org-drive.js';
+
+const EXT: Record<string, string> = { image: 'png', video: 'mp4', gif: 'gif', audio: 'mp3' };
+const SUBFOLDER: Record<string, string> = { video: 'videos', gif: 'videos', image: 'images' };
 
 export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ payload, log }) => {
   const { org_id, asset_id, storage_key } = payload;
 
-  // Verify the asset exists + resolve its storage key.
-  const key = await withTenant(db, org_id, async (tx) => {
-    const rows = await tx
-      .select({ storageKey: assets.storageKey, status: assets.status })
+  // Load the asset + resolve the target brand + topic (folder = <Brand>/videos/<topic>).
+  const meta = await withTenant(db, org_id, async (tx) => {
+    const [row] = await tx
+      .select({
+        storageKey: assets.storageKey,
+        kind: assets.kind,
+        mimeType: assets.mimeType,
+        brandId: assets.brandId,
+        contentItemId: assets.contentItemId,
+      })
       .from(assets)
       .where(eq(assets.id, asset_id))
       .limit(1);
-    const row = rows[0];
     if (!row) throw new TerminalError(`asset not found: ${asset_id}`);
-    return row.storageKey ?? storage_key;
+    const brand = await getBrand(tx, row.brandId ?? (payload.brand_id as string));
+    let topic = 'general';
+    if (row.contentItemId) {
+      const [ci] = await tx
+        .select({ title: contentItems.title })
+        .from(contentItems)
+        .where(eq(contentItems.id, row.contentItemId))
+        .limit(1);
+      topic = (ci?.title || 'general').replace(/[\\/]/g, '-').slice(0, 80);
+    }
+    return { key: row.storageKey ?? storage_key, kind: row.kind, mimeType: row.mimeType, brandName: brand?.companyName ?? 'Brand', topic };
   });
 
-  if (!key) throw new TerminalError(`asset ${asset_id} has no storage key to mirror`);
+  if (!meta.key) throw new TerminalError(`asset ${asset_id} has no storage key to mirror`);
 
-  // Ensure the object is retrievable from the system-of-record before mirroring.
-  // A real StorageAdapter.mirror(key, driveFolderId) would push to Drive; the
-  // interface today exposes get/put/url, so we validate availability and mark
-  // the asset mirrored. (Swap to a dedicated mirror() call when it lands.)
+  // Fetch the bytes from the system-of-record (retryable if not yet available).
+  let bytes: Buffer;
   try {
-    await adapters.storage.get(key);
+    bytes = await adapters.storage.get(meta.key);
   } catch (err) {
-    // Object not yet available → transient; let BullMQ retry.
-    throw new Error(`storage.get failed for ${key}: ${toError(err).message}`);
+    throw new Error(`storage.get failed for ${meta.key}: ${toError(err).message}`);
   }
 
-  const driveFileRef = payload.drive_folder_id ? `${payload.drive_folder_id}/${asset_id}` : `drive/${asset_id}`;
+  // Upload to the org's Google Drive under <Brand>/<videos|images>/<topic>/.
+  let driveFileRef: string;
+  const drive = await getOrgDrive(org_id);
+  if (drive) {
+    const sub = SUBFOLDER[meta.kind] ?? 'assets';
+    const folderId = await drive.ensureFolderPath([meta.brandName, sub, meta.topic]);
+    const ext = EXT[meta.kind] ?? 'bin';
+    const file = await drive.uploadFile(
+      `${meta.kind}-${asset_id.slice(0, 8)}.${ext}`,
+      bytes,
+      meta.mimeType ?? 'application/octet-stream',
+      folderId,
+    );
+    driveFileRef = file.id;
+    log.info(
+      { asset_id, folder: `${meta.brandName}/${sub}/${meta.topic}`, driveFileId: file.id },
+      'drive-mirror uploaded to Google Drive',
+    );
+  } else {
+    // No Drive configured → record a placeholder (S3 remains system of record).
+    driveFileRef = `drive/${asset_id}`;
+  }
 
   await withTenant(db, org_id, async (tx) => {
     await tx
@@ -51,6 +89,5 @@ export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ pay
       .where(eq(assets.id, asset_id));
   });
 
-  log.info({ asset_id, key, driveFileRef }, 'drive-mirror complete');
   return { asset_id, drive_file_id: driveFileRef };
 });
