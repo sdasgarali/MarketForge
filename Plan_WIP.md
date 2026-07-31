@@ -125,6 +125,21 @@ User dropped Clerk for own JWT login backed by MongoDB Atlas.
 - [ ] **Slice 6 — automation & schedules from UI**: brand publishingSchedule + pipeline trigger controls;
       backend enqueue endpoints.
 
+## Pipelines monitor + force-shutdown kill switch (2026-08-01) ✅ LIVE + TESTED
+Interpreted operator's 3-pipeline diagram (Orchestrator / Video / Research) into a live monitor.
+- queue: Redis global kill switch (engage/clear/status/isEngaged). worker base processor aborts every
+  job (TerminalError) when engaged.
+- api `/pipelines`: GET status (per-step live BullMQ counts → idle/queued/running/error/stopped),
+  POST start (Auto button → resume + enqueue research), POST shutdown (engage kill switch + pause +
+  obliterate ALL 9 queues), POST resume. Admin-gated + audited.
+- web `/pipelines` (sidebar → Automation): 3 pipelines as step-flows with status dots, totals,
+  Auto/Force-shutdown/Re-enable, kill-switch banner, company fan-out (Neuraforz/Exzelon/Medeoan/Tavakkul).
+- VERIFIED in browser: monitor matches the diagrams; Force shutdown → banner "by founder@…" + all steps
+  Stopped + 9 queues obliterated; Re-enable → clean. Deployed (VPS api+worker + Vercel web).
+- NOTE: steps map to real queues so they light up when the actual pipeline runs; the named agents
+  (character-design AI, Higgsfield, market-research AI) are the design targets — wiring them to real
+  generation is future work (ties into Slice 4: adapters consume per-org keys).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
