@@ -1,4 +1,24 @@
-import { env } from './env';
+import { clerkEnabled, env } from './env';
+
+/**
+ * Clerk global exposed on the window once ClerkProvider is mounted. We read the
+ * session token from here (rather than a React hook) so the plain fetch client
+ * can attach `Authorization: Bearer <token>` without threading a hook through
+ * every call site. `getToken()` always returns a fresh, short-lived JWT.
+ */
+interface ClerkWindow {
+  Clerk?: { session?: { getToken: () => Promise<string | null> } | null };
+}
+
+async function getAuthToken(): Promise<string | null> {
+  if (!clerkEnabled || typeof window === 'undefined') return null;
+  try {
+    const clerk = (window as unknown as ClerkWindow).Clerk;
+    return (await clerk?.session?.getToken()) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Typed fetch client for the MarketForge API.
@@ -59,10 +79,13 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { body, query, headers, raw, ...rest } = opts;
 
+  const token = await getAuthToken();
+
   const res = await fetch(buildUrl(path, query), {
     ...rest,
     headers: {
       'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(activeOrgId ? { 'x-org-id': activeOrgId } : {}),
       ...(headers ?? {}),
     },

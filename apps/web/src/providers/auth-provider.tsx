@@ -14,7 +14,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   return (
-    <ClerkProvider publishableKey={env.clerkPublishableKey}>
+    <ClerkProvider
+      publishableKey={env.clerkPublishableKey}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+    >
       {children}
     </ClerkProvider>
   );
