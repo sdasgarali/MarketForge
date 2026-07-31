@@ -70,9 +70,17 @@ integrationsRouter.post(
     try {
       res.json(await integrationsService.testUpload(ctx.orgId));
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload test failed';
+      const quota = /storage quota|storageQuota/i.test(message);
       res.status(200).json({
         ok: false,
-        error: err instanceof Error ? err.message : 'Upload test failed',
+        error: message,
+        ...(quota
+          ? {
+              hint:
+                'Service accounts have no personal storage. Use a Google SHARED DRIVE: create one, add the service account as a member (Content manager), and set the Root folder id to a folder inside that Shared Drive. Folders/uploads then work.',
+            }
+          : {}),
       });
     }
   }),
