@@ -30,7 +30,10 @@ RUN pnpm install --frozen-lockfile
 # Copy the pruned source + shared root config, then build.
 COPY --from=prune /app/out/full/ ./
 COPY tsconfig.base.json ./tsconfig.base.json
-RUN pnpm --filter @marketforge/worker build
+# Build the worker AND its workspace deps (the `...` suffix) so every
+# @marketforge/* package has a dist/ before `pnpm deploy` copies them —
+# otherwise the runtime image is missing e.g. @marketforge/queue/dist.
+RUN pnpm --filter "@marketforge/worker..." build
 
 # Drop dev dependencies for the runtime image.
 RUN pnpm --filter @marketforge/worker --prod deploy /app/deploy
