@@ -241,6 +241,20 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
 - REMAINING: RAG retrieval at generation time (store✓, retrieve-into-prompt pending); self-updating RAG on
   a schedule (manual "Refresh with AI" now); supervisor auto-remediation (diagnoses now, doesn't auto-act).
 
+## Orchestrator (AI 1 / Pipeline 1) — WIRED (2026-08-01) ✅ LIVE + TESTED
+- New `orchestrate` job/processor = AI 1. Reads the brand's contacts CSV from Drive
+  (GDriveClient.findFiles + download), counts rows vs a per-brand baseline (brands.knowledgeBase
+  .processedContacts). NEW contacts → enqueue generate-text (Pipeline 2/video); else → research
+  (Pipeline 3). Emits a dashboard notification with the decision. Pipeline start now enqueues
+  `orchestrate` per real brand (was: raw research). Also: drive-mirror now REALLY uploads assets to
+  <Brand>/videos/<topic>/ via GDriveClient; getOrgDrive helper.
+- VERIFIED (Carol/Exzelon): AI 1 ran → csvFound=false → activate=3 → notification "AI 1 checked
+  Exzelon — No contacts CSV in Drive → activating Pipeline 3 (research)". Correct branch.
+- To see Pipeline 2 activate: put a "<Brand> csv" file with new rows in the (Shared) Drive.
+- STILL NEEDS for real OUTPUT in Drive: (1) a VALID AI key (NVIDIA free etc.) so generation produces
+  assets; (2) a Google SHARED DRIVE (service accounts can't write to personal My Drive) + service
+  account added. Then research→generate→drive-mirror lands files in Drive.
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
