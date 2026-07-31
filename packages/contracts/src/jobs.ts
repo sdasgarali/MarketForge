@@ -7,6 +7,7 @@ import { Json, Uuid } from './common.js';
  * ARE the queue names — keep them stable; workers register processors by them.
  */
 export const JobName = z.enum([
+  'orchestrate',
   'research',
   'generate-text',
   'generate-image',
@@ -36,6 +37,14 @@ export const JobBase = z.object({
   attempt_reason: z.enum(['initial', 'retry', 'regeneration', 'manual']).default('initial'),
 });
 export type JobBase = z.infer<typeof JobBase>;
+
+// --- orchestrate (Pipeline 1 / AI 1) ---
+export const OrchestrateJobPayload = JobBase.extend({
+  platform: Platform.optional(),
+  /** Loop-guard: how many orchestrate cycles this run has done. */
+  depth: z.number().int().min(0).default(0),
+});
+export type OrchestrateJobPayload = z.infer<typeof OrchestrateJobPayload>;
 
 // --- research ---
 export const ResearchJobPayload = JobBase.extend({
@@ -137,6 +146,7 @@ export type NotifyJobPayload = z.infer<typeof NotifyJobPayload>;
  * typed enqueue helpers; workers use it to validate incoming jobs.
  */
 export const JOB_PAYLOAD_SCHEMAS = {
+  orchestrate: OrchestrateJobPayload,
   research: ResearchJobPayload,
   'generate-text': GenerateTextJobPayload,
   'generate-image': GenerateImageJobPayload,
@@ -150,6 +160,7 @@ export const JOB_PAYLOAD_SCHEMAS = {
 
 /** Typed map from JobName to its inferred payload type. */
 export interface JobPayloadMap {
+  orchestrate: OrchestrateJobPayload;
   research: ResearchJobPayload;
   'generate-text': GenerateTextJobPayload;
   'generate-image': GenerateImageJobPayload;

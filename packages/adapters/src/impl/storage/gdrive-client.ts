@@ -24,6 +24,7 @@ export interface GDriveConfig {
 export interface DriveFile {
   id: string;
   name: string;
+  mimeType?: string;
   webViewLink?: string;
 }
 
@@ -169,6 +170,24 @@ export class GDriveClient {
 
   async ensureFolder(name: string, parentId: string): Promise<string> {
     return (await this.findFolder(name, parentId)) ?? this.createFolder(name, parentId);
+  }
+
+  /** Find files (not folders) by a free-form Drive query. */
+  async findFiles(query: string): Promise<DriveFile[]> {
+    const data = await this.api<{ files?: DriveFile[] }>(
+      `/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType)&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=50`,
+    );
+    return data.files ?? [];
+  }
+
+  /** Download a file's bytes. */
+  async download(fileId: string): Promise<Buffer> {
+    const token = await this.accessToken();
+    const res = await fetch(`${DRIVE}/files/${fileId}?alt=media&supportsAllDrives=true`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`Drive download ${fileId} failed ${res.status}`);
+    return Buffer.from(await res.arrayBuffer());
   }
 
   /** Ensure a nested path under root (defaults to config rootFolderId). Returns leaf id. */

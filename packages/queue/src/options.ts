@@ -66,6 +66,7 @@ export const jitteredExponential: BackoffStrategy = (
 export const jobPriority: Record<JobName, number> = {
   publish: 1,
   notify: 2,
+  orchestrate: 3,
   review: 3,
   research: 4,
   'generate-text': 5,

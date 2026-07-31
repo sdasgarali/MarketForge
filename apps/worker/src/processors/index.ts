@@ -8,6 +8,7 @@
 import type { JobName, PayloadFor } from '@marketforge/contracts';
 import { registerProcessor, type Job } from '@marketforge/queue';
 import type { Worker } from 'bullmq';
+import { orchestrateProcessor } from './orchestrate.js';
 import { researchProcessor } from './research.js';
 import { generateTextProcessor } from './generate-text.js';
 import { generateImageProcessor } from './generate-image.js';
@@ -42,6 +43,7 @@ function make<N extends JobName>(
 }
 
 export const PROCESSORS: readonly ProcessorRegistration[] = [
+  make('orchestrate', orchestrateProcessor, 4),
   make('research', researchProcessor, 4),
   make('generate-text', generateTextProcessor, 4),
   make('generate-image', generateImageProcessor, 3),

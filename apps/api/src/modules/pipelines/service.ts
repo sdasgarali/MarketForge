@@ -197,14 +197,26 @@ export const pipelinesService = {
           );
           campaignId = camp?.id;
         }
-        await enqueue('research', {
-          org_id: orgId,
-          ...(brandId ? { brand_id: brandId } : {}),
-          ...(campaignId ? { campaign_id: campaignId } : {}),
-          platform,
-          attempt_reason: 'manual',
-          topic: `${plan.brand} · ${platform} · ~${plan.target_seconds}s (${plan.rounds}×${plan.clip_seconds}s) → ${plan.folder_template}`,
-        });
+        // Pipeline 1 / AI 1: the orchestrator checks the brand's CSV and
+        // branches to Pipeline 2 (new contacts) or Pipeline 3 (research).
+        if (brandId) {
+          await enqueue('orchestrate', {
+            org_id: orgId,
+            brand_id: brandId,
+            ...(campaignId ? { campaign_id: campaignId } : {}),
+            platform,
+            attempt_reason: 'manual',
+            depth: 0,
+          });
+        } else {
+          // No real brand record → seed via research directly.
+          await enqueue('research', {
+            org_id: orgId,
+            platform,
+            attempt_reason: 'manual',
+            topic: `${plan.brand} · ${platform} content run`,
+          });
+        }
         return { brand: plan.brand, campaign_id: campaignId ?? null };
       }),
     );
