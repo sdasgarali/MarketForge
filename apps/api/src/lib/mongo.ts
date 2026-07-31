@@ -23,7 +23,15 @@ function client(): Promise<MongoClient> {
   if (!env.MONGODB_URI) {
     throw new Error('MONGODB_URI is not configured (required for JWT auth)');
   }
-  clientPromise ??= new MongoClient(env.MONGODB_URI).connect();
+  // Cache the connection, but DON'T cache a rejected promise — otherwise the
+  // first failed connect (e.g. before the IP was allowlisted) would be reused
+  // forever. Reset on failure so the next request retries.
+  if (!clientPromise) {
+    clientPromise = new MongoClient(env.MONGODB_URI).connect().catch((err) => {
+      clientPromise = undefined;
+      throw err;
+    });
+  }
   return clientPromise;
 }
 
