@@ -35,8 +35,10 @@ services:
     environment:
       APP_ENV: PROD
       DEV_AUTH_BYPASS: '0'
-    # API is reached from the public internet only through nginx (127.0.0.1:8080).
-    ports:
+    # API is reached from the public internet only through nginx. `!override`
+    # REPLACES the base service's ports (compose merges lists by default, which
+    # would add a 0.0.0.0 binding that then collides with the loopback one).
+    ports: !override
       - '127.0.0.1:${API_PORT:-8080}:8080'
 
   worker:
