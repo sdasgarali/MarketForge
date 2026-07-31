@@ -38,6 +38,20 @@ export const envSchema = z.object({
   CLERK_WEBHOOK_SECRET: optionalString,
   DEV_AUTH_BYPASS: booleanish.default(false),
 
+  // --- Auth (manual JWT + MongoDB user store) ---
+  // When AUTH_JWT_SECRET is set (and bypass off), the API issues + verifies its
+  // own HS256 JWTs and stores users/credentials in MongoDB. Preferred over Clerk.
+  AUTH_JWT_SECRET: optionalString,
+  AUTH_JWT_EXPIRES_IN: z.string().default('7d'),
+  AUTH_DEFAULT_ORG_ID: z
+    .string()
+    .default('11111111-1111-1111-1111-111111111111'),
+  AUTH_DEFAULT_ROLE: z
+    .enum(['admin', 'manager', 'editor', 'viewer'])
+    .default('admin'),
+  MONGODB_URI: optionalString,
+  MONGODB_DB: z.string().default('marketforge'),
+
   // --- Secrets / envelope encryption (required for secrets pkg) ---
   ENCRYPTION_MASTER_KEY: z
     .string()

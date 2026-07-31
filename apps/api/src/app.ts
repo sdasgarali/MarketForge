@@ -18,6 +18,7 @@ import { authContext } from './middleware/auth-context.js';
 import { notFound } from './middleware/not-found.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { healthRouter } from './modules/health/routes.js';
+import { authRouter } from './modules/auth/routes.js';
 import { sessionRouter } from './modules/session/routes.js';
 import { brandsRouter } from './modules/brands/routes.js';
 import { socialAccountsRouter } from './modules/social-accounts/routes.js';
@@ -77,8 +78,9 @@ export function createApp(): Express {
   // 6. JSON body parsing (bounded).
   app.use(express.json({ limit: apiConfig.jsonLimit }));
 
-  // --- Public routes (no auth): liveness + readiness. ---
+  // --- Public routes (no auth): liveness + readiness + auth (register/login). ---
   app.use('/', healthRouter);
+  app.use('/auth', authRouter);
 
   // 7. Auth context — everything below requires a resolved TenantContext.
   app.use(authContext);

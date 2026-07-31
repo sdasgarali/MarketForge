@@ -13,16 +13,21 @@ import { env } from '@marketforge/config';
 import type { AuthProvider } from './provider.js';
 import { BypassAuthProvider } from './bypass.js';
 import { ClerkAuthProvider } from './clerk.js';
+import { JwtAuthProvider } from './jwt.js';
 
 /**
  * Build the active auth provider from config:
- *   1. DEV_AUTH_BYPASS on  → BypassAuthProvider (config already forbids +PROD).
- *   2. else CLERK_SECRET_KEY present → ClerkAuthProvider.
- *   3. else → throw (misconfiguration; fail fast).
+ *   1. DEV_AUTH_BYPASS on   → BypassAuthProvider (config already forbids +PROD).
+ *   2. AUTH_JWT_SECRET set   → JwtAuthProvider (manual email/password + JWT).
+ *   3. CLERK_SECRET_KEY set  → ClerkAuthProvider (legacy).
+ *   4. else → throw (misconfiguration; fail fast).
  */
 export function createAuthProvider(): AuthProvider {
   if (env.DEV_AUTH_BYPASS) {
     return new BypassAuthProvider();
+  }
+  if (env.AUTH_JWT_SECRET) {
+    return new JwtAuthProvider(env.AUTH_JWT_SECRET);
   }
   if (env.CLERK_SECRET_KEY) {
     const options: { secretKey: string; jwtKey?: string } = {
@@ -32,7 +37,7 @@ export function createAuthProvider(): AuthProvider {
     return new ClerkAuthProvider(options);
   }
   throw new Error(
-    'No auth configured: set CLERK_SECRET_KEY or enable DEV_AUTH_BYPASS',
+    'No auth configured: set AUTH_JWT_SECRET, CLERK_SECRET_KEY, or DEV_AUTH_BYPASS',
   );
 }
 
@@ -61,3 +66,5 @@ export { UnauthorizedError, ForbiddenError } from './errors.js';
 export { BypassAuthProvider } from './bypass.js';
 export { ClerkAuthProvider, mapClerkClaims } from './clerk.js';
 export type { ClerkClaims, ClerkAuthProviderOptions } from './clerk.js';
+export { JwtAuthProvider } from './jwt.js';
+export type { MarketForgeJwtClaims } from './jwt.js';

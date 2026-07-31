@@ -20,6 +20,9 @@ coverage/
 .env
 .env.*
 !.env.example
+# Credential files (Atlas onboarding etc.) — never commit
+atlas-credentials.env
+*credentials*.env
 
 # Logs
 logs/

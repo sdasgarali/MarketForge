@@ -24,7 +24,8 @@
     "@clerk/backend": "^2.33.6",
     "@marketforge/config": "workspace:*",
     "@marketforge/contracts": "workspace:*",
-    "@marketforge/logger": "workspace:*"
+    "@marketforge/logger": "workspace:*",
+    "jose": "^5.9.6"
   },
   "devDependencies": {
     "tsup": "^8.3.5",
