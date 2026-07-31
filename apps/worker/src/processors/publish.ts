@@ -4,9 +4,8 @@
  * backend-owned Scheduler, ADR-004). The worker loads the approved content +
  * media and publishes.
  *
- * n8n-vs-direct switch (ADR-005): when N8N_WEBHOOK_SECRET is configured we POST
- * a signed payload to `${N8N_WEBHOOK_BASE_URL}/webhook/wf-publish` and use its
- * result; otherwise we call `adapters.publisher.publish(...)` directly.
+ * Publishing runs entirely in the backend worker via `adapters.publisher`
+ * (n8n retired — the platform owns the integration logic directly).
  *
  * On success: update publish_jobs (external id, url, published_at, status), set
  * content_item.status='published', enqueue delayed `analytics` (~1h). On failure:
@@ -21,12 +20,11 @@ import { db, withTenant, publishJobs, assets, socialAccounts } from '@marketforg
 import type { Platform } from '@marketforge/contracts';
 import type { PublishMedia, PublishResult } from '@marketforge/adapters';
 import { defineProcessor } from './base.js';
-import { TerminalError, toError } from '../lib/errors.js';
-import { ANALYTICS_INITIAL_DELAY_MS, N8N_PUBLISH_PATH } from '../lib/constants.js';
+import { TerminalError } from '../lib/errors.js';
+import { ANALYTICS_INITIAL_DELAY_MS } from '../lib/constants.js';
 import { getBrand } from '../lib/brand.js';
 import { getContentItem, setContentStatus } from '../lib/content.js';
 import { writeAudit } from '../lib/audit.js';
-import { callN8n, isN8nEnabled } from '../lib/n8n.js';
 
 interface PublishInputs {
   post: { text: string; title?: string; hashtags?: string[] };
@@ -89,42 +87,13 @@ export const publishProcessor = defineProcessor('publish', async ({ payload, log
     };
   });
 
-  // 2) Publish — prefer n8n sub-workflow, else direct adapter.
-  let results: PublishResult[];
-  if (isN8nEnabled()) {
-    try {
-      const res = await callN8n<{ results: PublishResult[] }>(N8N_PUBLISH_PATH, {
-        org_id,
-        brand_id,
-        content_item_id,
-        platforms,
-        post: inputs.post,
-        media: inputs.media,
-        profileKey: inputs.profileKey,
-      });
-      results = Array.isArray(res.body?.results) ? res.body.results : [];
-      if (results.length === 0) {
-        throw new Error('n8n wf-publish returned no results');
-      }
-    } catch (err) {
-      // n8n path failed — fall back to the direct adapter so a webhook outage
-      // does not block time-sensitive publishing.
-      log.warn({ err: toError(err).message }, 'n8n publish failed; falling back to direct adapter');
-      results = await adapters.publisher.publish(
-        inputs.post,
-        platforms as Platform[],
-        inputs.media,
-        inputs.profileKey,
-      );
-    }
-  } else {
-    results = await adapters.publisher.publish(
-      inputs.post,
-      platforms as Platform[],
-      inputs.media,
-      inputs.profileKey,
-    );
-  }
+  // 2) Publish via the publisher adapter (backend-owned; ADR-005 retired n8n).
+  const results: PublishResult[] = await adapters.publisher.publish(
+    inputs.post,
+    platforms as Platform[],
+    inputs.media,
+    inputs.profileKey,
+  );
 
   const anyFailed = results.some((r) => r.status === 'failed');
   const firstOk = results.find((r) => r.status === 'published');

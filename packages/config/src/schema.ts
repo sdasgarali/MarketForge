@@ -83,10 +83,6 @@ export const envSchema = z.object({
   GOOGLE_DRIVE_PRIVATE_KEY: optionalString,
   GOOGLE_DRIVE_ROOT_FOLDER_ID: optionalString,
 
-  // --- n8n ---
-  N8N_WEBHOOK_BASE_URL: z.string().url().default('http://localhost:5678/webhook'),
-  N8N_WEBHOOK_SECRET: optionalString,
-
   // --- Notifications ---
   SLACK_WEBHOOK_URL: optionalString,
   DISCORD_WEBHOOK_URL: optionalString,

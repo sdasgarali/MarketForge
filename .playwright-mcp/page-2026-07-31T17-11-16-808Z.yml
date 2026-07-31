@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e8]:
+      - heading "Welcome back" [level=1] [ref=e9]
+      - paragraph [ref=e10]: Sign in to MarketForge
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - text: Email
+        - textbox "Email" [ref=e13]:
+          - /placeholder: you@company.com
+          - text: founder@marketforge.app
+      - generic [ref=e14]:
+        - text: Password
+        - textbox "Password" [ref=e15]:
+          - /placeholder: Your password
+          - text: MarketForge!2026
+      - button "Sign in" [disabled]
+    - paragraph [ref=e17]:
+      - text: Don't have an account?
+      - link "Sign up" [ref=e18] [cursor=pointer]:
+        - /url: /sign-up
+  - region "Notifications alt+T"
+  - alert [ref=e19]

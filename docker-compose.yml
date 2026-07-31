@@ -1,6 +1,6 @@
 # =============================================================================
 # MarketForge — local/dev infrastructure (ADR-010)
-# Services: postgres (16) · redis (7) · n8n (queue mode: main + worker)
+# Services: postgres (16) · redis (7)
 # app services (api / web / worker) are added later — see commented placeholders.
 # All config comes from `.env` (copy from .env.example). No secrets are baked in.
 # =============================================================================
@@ -15,7 +15,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-marketforge}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marketforge}
       POSTGRES_DB: ${POSTGRES_DB:-marketforge}
-      # n8n gets its own database inside the same instance (created by init script).
     ports:
       - '${DB_HOST_PORT:-5432}:5432'
     volumes:
@@ -47,71 +46,8 @@ services:
       retries: 10
 
   # ---------------------------------------------------------------------------
-  # n8n — QUEUE MODE (ADR-005). `n8n` = main (webhooks/UI/orchestrator),
-  # `n8n-worker` = execution worker. Both share Redis (BullMQ) + Postgres.
-  # ---------------------------------------------------------------------------
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: mf-n8n
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    ports:
-      - '${N8N_PORT:-5678}:5678'
-    environment: &n8n-env
-      # --- Queue mode ---
-      EXECUTIONS_MODE: queue
-      QUEUE_BULL_REDIS_HOST: redis
-      QUEUE_BULL_REDIS_PORT: 6379
-      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      QUEUE_HEALTH_CHECK_ACTIVE: 'true'
-      # --- Postgres as n8n's own DB (separate DB inside the same instance) ---
-      DB_TYPE: postgresdb
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: ${N8N_DB:-n8n}
-      DB_POSTGRESDB_USER: ${POSTGRES_USER:-marketforge}
-      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-marketforge}
-      # --- Security / host ---
-      N8N_SECURE_COOKIE: 'false'
-      N8N_BASIC_AUTH_ACTIVE: 'true'
-      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-changeme}
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-changeme_n8n_encryption_key}
-      N8N_HOST: ${N8N_HOST:-localhost}
-      N8N_PORT: 5678
-      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
-      WEBHOOK_URL: ${N8N_WEBHOOK_BASE_URL:-http://localhost:5678/}
-      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-UTC}
-    command: start
-    volumes:
-      - n8ndata:/home/node/.n8n
-    healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:5678/healthz || exit 1']
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  n8n-worker:
-    image: n8nio/n8n:latest
-    container_name: mf-n8n-worker
-    restart: unless-stopped
-    depends_on:
-      n8n:
-        condition: service_healthy
-    environment:
-      <<: *n8n-env
-    command: worker
-    volumes:
-      - n8ndata:/home/node/.n8n
-
-  # ---------------------------------------------------------------------------
   # APP SERVICES — behind the `full` profile so the default `docker compose up`
-  # starts only infra (postgres/redis/n8n) for host-side `pnpm dev`. Run the
+  # starts only infra (postgres/redis) for host-side `pnpm dev`. Run the
   # whole stack in containers with:  docker compose --profile full up --build
   # The `environment:` blocks override host-specific keys with docker-network
   # service names (assumes APP_ENV=DEV; add PROD_* overrides for prod compose).
@@ -128,7 +64,6 @@ services:
       DEV_DATABASE_URL: postgres://${POSTGRES_USER:-marketforge}:${POSTGRES_PASSWORD:-marketforge}@postgres:5432/${POSTGRES_DB:-marketforge}
       DEV_DATABASE_ADMIN_URL: postgres://${POSTGRES_USER:-marketforge}:${POSTGRES_PASSWORD:-marketforge}@postgres:5432/${POSTGRES_DB:-marketforge}
       DEV_REDIS_URL: redis://redis:6379
-      DEV_N8N_WEBHOOK_BASE_URL: http://n8n:5678
       DEV_AUTH_BYPASS: ${DEV_AUTH_BYPASS:-1}
     command: ['pnpm', '--filter', '@marketforge/db', 'db:migrate']
     restart: 'no'
@@ -182,4 +117,3 @@ services:
 volumes:
   pgdata:
   redisdata:
-  n8ndata:

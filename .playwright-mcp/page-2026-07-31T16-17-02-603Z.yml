@@ -1,0 +1,27 @@
+- generic [ref=e1]:
+  - generic [ref=e65]:
+    - generic [ref=e66]:
+      - generic [ref=e68]:
+        - heading "Check your email" [level=1] [ref=e69]
+        - paragraph [ref=e70]: to continue to MarketForge
+        - paragraph [ref=e72]: pilot.demo@marketforge.app
+      - generic [ref=e73]:
+        - generic [ref=e74]:
+          - generic [ref=e76]:
+            - generic:
+              - group
+              - textbox "Enter verification code" [active] [ref=e77]
+          - button "Didn't receive a code? Resend (30)" [disabled]
+        - paragraph [ref=e80]: You're signing in from a new device. We're asking for verification to keep your account secure.
+        - generic [ref=e81]:
+          - button [ref=e82] [cursor=pointer]
+          - link "Use another method" [ref=e87] [cursor=pointer]:
+            - /url: https://marketforge-web.vercel.app/sign-in/factor-two
+    - generic [ref=e90]:
+      - generic [ref=e92]:
+        - paragraph [ref=e93]: Secured by
+        - link "Clerk logo" [ref=e94] [cursor=pointer]:
+          - /url: https://go.clerk.com/components
+      - paragraph [ref=e100]: Development mode
+  - region "Notifications alt+T"
+  - alert [ref=e3]

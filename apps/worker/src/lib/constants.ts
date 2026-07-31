@@ -24,9 +24,3 @@ export const ANALYTICS_FOLLOWUP_DELAY_MS = 24 * 60 * 60 * 1000;
 
 /** Max number of analytics pulls per publish (initial + follow-ups). */
 export const ANALYTICS_MAX_PULLS = 3;
-
-/** n8n publish sub-workflow path (ADR-005 modular sub-workflows). */
-export const N8N_PUBLISH_PATH = '/webhook/wf-publish';
-
-/** n8n analytics collection sub-workflow path. */
-export const N8N_ANALYTICS_PATH = '/webhook/wf-collect-analytics';

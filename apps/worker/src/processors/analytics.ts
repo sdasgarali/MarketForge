@@ -1,7 +1,7 @@
 /**
- * analytics processor — Stage 6. Pulls post metrics from the publisher (or n8n
- * `wf-collect-analytics`), upserts an `analytics` row, and reschedules a
- * follow-up pull (~24h) up to ANALYTICS_MAX_PULLS times.
+ * analytics processor — Stage 6. Pulls post metrics from the publisher adapter,
+ * upserts an `analytics` row, and reschedules a follow-up pull (~24h) up to
+ * ANALYTICS_MAX_PULLS times.
  *
  * The pull count is derived from how many analytics rows already exist for the
  * content item — no extra state needed.
@@ -15,13 +15,11 @@ import { db, withTenant, analytics, publishJobs } from '@marketforge/db';
 import type { AnalyticsSnapshot } from '@marketforge/adapters';
 import type { Platform } from '@marketforge/contracts';
 import { defineProcessor } from './base.js';
-import { TerminalError, toError } from '../lib/errors.js';
+import { TerminalError } from '../lib/errors.js';
 import {
   ANALYTICS_FOLLOWUP_DELAY_MS,
   ANALYTICS_MAX_PULLS,
-  N8N_ANALYTICS_PATH,
 } from '../lib/constants.js';
-import { callN8n, isN8nEnabled } from '../lib/n8n.js';
 
 export const analyticsProcessor = defineProcessor('analytics', async ({ payload, log }) => {
   const { org_id, brand_id, campaign_id, content_item_id, publish_job_id } = payload;
@@ -61,30 +59,14 @@ export const analyticsProcessor = defineProcessor('analytics', async ({ payload,
   if (!ctx.platform) throw new TerminalError('analytics job could not resolve a platform');
   if (!ctx.resolvedBrandId) throw new TerminalError('analytics job could not resolve brand_id');
 
-  // Fetch the snapshot — prefer n8n, else the publisher adapter.
+  // Fetch the snapshot via the publisher adapter (n8n retired).
   const profileKey = ctx.resolvedBrandId ? `brand:${ctx.resolvedBrandId}` : `org:${org_id}`;
-  let snap: AnalyticsSnapshot;
-  if (isN8nEnabled()) {
-    try {
-      const res = await callN8n<{ snapshot: AnalyticsSnapshot }>(N8N_ANALYTICS_PATH, {
-        org_id,
-        content_item_id,
-        publish_job_id,
-        platform: ctx.platform,
-        externalPostId: ctx.externalPostId,
-        profileKey,
-      });
-      if (!res.body?.snapshot) throw new Error('n8n wf-collect-analytics returned no snapshot');
-      snap = res.body.snapshot;
-    } catch (err) {
-      log.warn({ err: toError(err).message }, 'n8n analytics failed; falling back to adapter');
-      if (!ctx.externalPostId) throw new TerminalError('no external post id to fetch analytics for');
-      snap = await adapters.publisher.fetchAnalytics(ctx.externalPostId, ctx.platform as Platform, profileKey);
-    }
-  } else {
-    if (!ctx.externalPostId) throw new TerminalError('no external post id to fetch analytics for');
-    snap = await adapters.publisher.fetchAnalytics(ctx.externalPostId, ctx.platform as Platform, profileKey);
-  }
+  if (!ctx.externalPostId) throw new TerminalError('no external post id to fetch analytics for');
+  const snap: AnalyticsSnapshot = await adapters.publisher.fetchAnalytics(
+    ctx.externalPostId,
+    ctx.platform as Platform,
+    profileKey,
+  );
 
   // Upsert the analytics row (append a new capture each pull for time-series).
   await withTenant(db, org_id, async (tx) => {

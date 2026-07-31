@@ -1,0 +1,100 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e101]:
+    - complementary [ref=f1e102]:
+      - link "MarketForge" [ref=f1e104] [cursor=pointer]:
+        - /url: /dashboard
+      - navigation "Primary" [ref=f1e112]:
+        - link "Dashboard" [ref=f1e114] [cursor=pointer]:
+          - /url: /dashboard
+        - generic [ref=f1e122]:
+          - paragraph [ref=f1e123]: Workspace
+          - link "Brands" [ref=f1e124] [cursor=pointer]:
+            - /url: /brands
+          - link "Campaigns" [ref=f1e128] [cursor=pointer]:
+            - /url: /campaigns
+          - link "Content" [ref=f1e133] [cursor=pointer]:
+            - /url: /content
+          - link "Approvals" [ref=f1e137] [cursor=pointer]:
+            - /url: /approvals
+        - generic [ref=f1e142]:
+          - paragraph [ref=f1e143]: Insights
+          - link "Analytics" [ref=f1e144] [cursor=pointer]:
+            - /url: /analytics
+          - link "Notifications" [ref=f1e148] [cursor=pointer]:
+            - /url: /notifications
+        - generic [ref=f1e153]:
+          - paragraph [ref=f1e154]: System
+          - link "Settings" [ref=f1e155] [cursor=pointer]:
+            - /url: /settings
+      - generic [ref=f1e160]: API connected
+    - generic [ref=f1e163]:
+      - banner [ref=f1e164]:
+        - textbox "Search" [ref=f1e166]:
+          - /placeholder: Search brands, campaigns, content…
+        - generic [ref=f1e167]:
+          - button "Toggle theme" [ref=f1e168] [cursor=pointer]
+          - link "Notifications" [ref=f1e169] [cursor=pointer]:
+            - /url: /notifications
+          - button "Account menu" [ref=f1e170] [cursor=pointer]
+      - main [ref=f1e173]:
+        - generic [ref=f1e175]:
+          - generic [ref=f1e176]:
+            - generic [ref=f1e177]:
+              - heading "Dashboard" [level=1] [ref=f1e178]
+              - paragraph [ref=f1e179]: Your marketing engine at a glance — pipeline, spend, and recent activity.
+            - link "New campaign" [ref=f1e181] [cursor=pointer]:
+              - /url: /campaigns
+          - generic [ref=f1e182]:
+            - generic [ref=f1e184]:
+              - paragraph [ref=f1e186]: Active brands
+              - paragraph [ref=f1e190]: "1"
+              - generic [ref=f1e191]: across the org
+            - generic [ref=f1e194]:
+              - paragraph [ref=f1e196]: Active campaigns
+              - paragraph [ref=f1e201]: "0"
+              - generic [ref=f1e202]: 12%
+            - generic [ref=f1e208]:
+              - paragraph [ref=f1e210]: Pending approvals
+              - paragraph [ref=f1e215]: "0"
+              - generic [ref=f1e216]: awaiting review
+            - generic [ref=f1e219]:
+              - paragraph [ref=f1e221]: Published (30d)
+              - paragraph [ref=f1e226]: "0"
+              - generic [ref=f1e227]: 8%
+          - generic [ref=f1e232]:
+            - generic [ref=f1e234]:
+              - generic [ref=f1e235]:
+                - generic [ref=f1e236]:
+                  - generic [ref=f1e237]: AI & publishing spend
+                  - paragraph [ref=f1e238]: Last 30 days
+                - generic [ref=f1e239]: $0.00
+              - img [ref=f1e246]:
+                - generic [ref=f1e250]:
+                  - generic [ref=f1e251]: 07-03
+                  - generic [ref=f1e253]: 07-08
+                  - generic [ref=f1e255]: 07-13
+                  - generic [ref=f1e257]: 07-17
+                  - generic [ref=f1e259]: 07-21
+                  - generic [ref=f1e261]: 07-26
+                  - generic [ref=f1e263]: 07-31
+                - generic [ref=f1e266]:
+                  - generic [ref=f1e267]: "0"
+                  - generic [ref=f1e269]: "1"
+                  - generic [ref=f1e271]: "2"
+                  - generic [ref=f1e273]: "3"
+                  - generic [ref=f1e275]: "4"
+            - generic [ref=f1e279]:
+              - generic [ref=f1e280]: Content pipeline
+              - paragraph [ref=f1e281]: By status
+          - generic [ref=f1e283]:
+            - generic [ref=f1e285]:
+              - generic [ref=f1e286]:
+                - generic [ref=f1e287]: Upcoming
+                - link "View all" [ref=f1e291] [cursor=pointer]:
+                  - /url: /content
+              - paragraph [ref=f1e293]: Nothing scheduled yet.
+            - generic [ref=f1e294]: Recent publishes
+            - generic [ref=f1e302]: Recent activity
+  - region "Notifications alt+T"
+  - alert [ref=f1e3]
+  - generic [ref=f1e307]: "0"
