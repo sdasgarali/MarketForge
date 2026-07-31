@@ -1,9 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadRootEnv } from '@marketforge/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+
+// Load the repo-root .env before reading connection strings (runs from
+// packages/db where no local .env exists). No schema validation — this script
+// only needs the admin DB URL.
+loadRootEnv();
 
 /**
  * Programmatic migrator (ADR-001).

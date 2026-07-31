@@ -13,8 +13,12 @@
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { loadRootEnv } from '@marketforge/config';
 import postgres from 'postgres';
 import * as schema from './schema/index.js';
+
+// Load the repo-root .env before reading connection strings (see migrate.ts).
+loadRootEnv();
 
 // drizzle-kit/api.mjs (ESM) ships broken dynamic requires; the CJS build works.
 // Force the CJS variant via createRequire.

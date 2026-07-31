@@ -9,6 +9,7 @@
  */
 export {
   loadEnv,
+  loadRootEnv,
   resetEnvCache,
   EnvValidationError,
   type LoadEnvOptions,

@@ -1,6 +1,29 @@
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 import { APP_ENVS, type AppEnv, type Env, envSchema } from './schema.js';
+
+/**
+ * Locate the repo-root `.env` by walking up from `process.cwd()`.
+ *
+ * dotenv only reads `${cwd}/.env`, but our entrypoints run from package dirs
+ * (e.g. `pnpm --filter @marketforge/db ...` or turbo tasks with cwd=apps/api),
+ * where no local `.env` exists. Walking up to the single repo-root `.env` makes
+ * env loading work regardless of which package launched the process. Returns
+ * `undefined` when no `.env` is found (dotenv then falls back to its default).
+ */
+function findEnvFile(): string | undefined {
+  let dir = process.cwd();
+  // Bounded walk to filesystem root (dirname is idempotent at the root).
+  for (;;) {
+    const candidate = join(dir, '.env');
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
 
 /**
  * Thrown when environment validation fails. Aggregates all issues so operators
@@ -58,6 +81,18 @@ function readAppEnv(raw: NodeJS.ProcessEnv): AppEnv {
   return value as AppEnv;
 }
 
+/**
+ * Populate `process.env` from the repo-root `.env` WITHOUT validating the
+ * schema. For raw scripts (migrations, one-off CLIs) that read a few keys
+ * directly and must not trigger full fail-fast config validation. Idempotent
+ * and safe to call before `loadEnv`. Returns the `.env` path used, if any.
+ */
+export function loadRootEnv(): string | undefined {
+  const path = findEnvFile();
+  loadDotenv({ path });
+  return path;
+}
+
 let cached: Env | undefined;
 
 export interface LoadEnvOptions {
@@ -77,8 +112,9 @@ export function loadEnv(options: LoadEnvOptions = {}): Env {
   if (cached && !options.reload) return cached;
 
   if (!options.skipDotenv) {
-    // Populates process.env from .env if present; does not override existing keys.
-    loadDotenv();
+    // Populates process.env from the repo-root .env if present; does not
+    // override existing keys. Walks up from cwd so it works from any package.
+    loadDotenv({ path: findEnvFile() });
   }
 
   const raw = options.source ?? process.env;

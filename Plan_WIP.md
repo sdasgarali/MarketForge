@@ -1,19 +1,24 @@
 # Plan WIP
 
 ## SESSION_CONTEXT_RETRIEVAL
-> Building the **MarketForge** MVP monorepo (user said "implement all, discuss cost later").
-> Foundations + decisions done. IMPLEMENTATION IN PROGRESS: foundation packages first, then
-> parallel fan-out (backend/worker/adapters/web/n8n), then integrator pass (install + typecheck +
-> commit). Cost/publisher-tier (Ayrshare Premium vs Postiz) intentionally DEFERRED — adapters make
-> it swappable. Repo root = E:\chapter 2\N8N.
-> NEXT STEP: check foundation agent output → fan out app-slice agents → integrate + commit.
+> **Local stack is LIVE** (2026-07-31). Full bring-up done: Docker infra (mf-postgres :5433,
+> mf-redis :6380, mf-n8n :5678 — all healthy) + migrate + seed (org/admin/Exzelon brand) + all
+> three apps up (api :8080 healthy, worker 9 processors + health :9090, web :3000 → /dashboard 200).
+> API smoke-tested with `x-org-id: 1111…1111` (seed org): /brands returns Exzelon, /dashboard/summary,
+> /analytics, /content-items all return correct envelopes. RLS scoping verified (1 brand for org).
+> FIXED: config `.env` loader was CWD-relative → broke every entrypoint launched from a package dir
+> (db scripts, api/worker under turbo). Now walks UP to repo-root `.env` (loadEnv + new `loadRootEnv()`);
+> wired into migrate.ts/push.ts. 12/12 test tasks green, config+db typecheck clean.
+> NEXT STEP: full pipeline loop (Research→Generate→…→Publish) needs REAL API keys (Anthropic/fal/
+> Ayrshare) — adapters inert without them. Enqueue a job to test queue wiring, or provide keys.
+> To restart stack: `docker compose up -d` (infra already persists via restart:unless-stopped) → `pnpm dev`.
 
 ## Decisions locked (2026-07-31)
 - MVP platforms: **X + Instagram** · Budget: **lean < $500/mo** · Policy: **per-brand trust tiers** ·
   Video: **deferred to Phase 3**, roster includes **Kling (via fal)**.
 
 ## Immediate TODO
-- [ ] Provision infra: `docker compose up -d` → `db:migrate` → `db:seed` → `pnpm dev`; end-to-end smoke test the loop
+- [x] Provision infra: `docker compose up -d` → `db:migrate` → `db:seed` → `pnpm dev`; stack LIVE + read-path smoke-tested (2026-07-31). Full generate→publish loop still needs real keys.
 - [ ] Provide real API keys in `.env` (Anthropic, fal, Ayrshare, S3, Clerk) to exercise adapters live
 - [ ] DECIDE §2a: MVP publisher tier — **Ayrshare Premium (~$149)** vs **self-host Postiz (free)** (adapter already swappable)
 - [ ] Answer remaining questions 5–8 (scale / quality rubric / hosting / legal)
