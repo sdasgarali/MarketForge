@@ -107,3 +107,32 @@ export const brandKnowledge = pgTable(
     index('brand_knowledge_brand_id_idx').on(t.brandId),
   ],
 );
+
+/**
+ * Per-brand contacts/leads — the in-app alternative to CSV-in-Drive. AI 1
+ * (orchestrator) checks for `status='new'` rows to decide Pipeline 2 vs 3.
+ * Tenant-scoped by RLS.
+ */
+export const contacts = pgTable(
+  'contacts',
+  {
+    id: pk(),
+    orgId: orgId().references(() => organizations.id, { onDelete: 'cascade' }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
+    name: text('name'),
+    handle: text('handle'),
+    company: text('company'),
+    source: text('source').notNull().default('manual'),
+    status: text('status').notNull().default('new'),
+    metadata: jsonb('metadata'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('contacts_org_id_idx').on(t.orgId),
+    index('contacts_brand_id_idx').on(t.brandId),
+    index('contacts_status_idx').on(t.status),
+  ],
+);

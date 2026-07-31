@@ -36,6 +36,7 @@ DECLARE
     'org_memberships',
     'brands',
     'brand_knowledge',
+    'contacts',
     'social_accounts',
     'campaigns',
     'content_items',

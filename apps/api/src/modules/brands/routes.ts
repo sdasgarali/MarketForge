@@ -13,6 +13,7 @@ import { writeAudit } from '../../lib/audit.js';
 import { requireMinRole } from '../../middleware/rbac.js';
 import { brandsService } from './service.js';
 import { brandKnowledgeService } from './knowledge-service.js';
+import { contactsService } from './contacts-service.js';
 
 export const brandsRouter: Router = Router();
 
@@ -25,6 +26,47 @@ brandsRouter.post(
     const result = await brandsService.seedDefaults(ctx.orgId);
     await writeAudit(ctx, { action: 'brand.seed_defaults', entityType: 'brand' }, req);
     res.json(result);
+  }),
+);
+
+// --- Per-brand contacts/leads (AI 1 reads these) ---
+brandsRouter.get(
+  '/:brandId/contacts',
+  requireMinRole('viewer'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    res.json({ items: await contactsService.list(ctx.orgId, req.params.brandId!) });
+  }),
+);
+
+const ContactsInput = z.object({
+  contacts: z
+    .array(
+      z.object({
+        name: z.string().optional(),
+        handle: z.string().optional(),
+        company: z.string().optional(),
+      }),
+    )
+    .min(1),
+});
+
+brandsRouter.post(
+  '/:brandId/contacts',
+  requireMinRole('editor'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    const { contacts } = parseOrThrow(ContactsInput, req.body);
+    res.status(201).json(await contactsService.add(ctx.orgId, req.params.brandId!, contacts));
+  }),
+);
+
+brandsRouter.delete(
+  '/:brandId/contacts/:id',
+  requireMinRole('editor'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    res.json(await contactsService.remove(ctx.orgId, req.params.brandId!, req.params.id!));
   }),
 );
 
