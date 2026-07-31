@@ -181,6 +181,23 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
   store in the topic folder) need the GENERATION pipeline wired to real adapters/keys/Drive (Slice 4).
   Right now Start enqueues jobs that run as stubs (no real keys consumed).
 
+## Generation pipeline WIRED to per-org keys (2026-08-01) ✅ LIVE + PROVEN
+- adapters: AsyncLocalStorage override — `runWithAdapters(bundle, fn)` + `adapters` proxy. Every
+  `adapters.*` call transparently uses a per-request bundle when one is active.
+- worker `lib/org-adapters.ts`: `getOrgAdapters(orgId)` reads the org's encrypted provider keys
+  (api_credentials, kind=provider:<id>) → builds an AdapterEnv overlay on env → createAdapters (cached
+  60s, resilient fallback to default). base processor runs each job inside
+  `runWithAdapters(getOrgAdapters(org_id), handler)` → agents/processors use the tenant's own keys.
+- pipelines start now resolves brand_id from real brand records (brand buttons → actual brands) so runs
+  reach generation. Worker tests 23/23, typecheck 19/19.
+- **PROVEN on VPS**: started Exzelon run → research job used the org's saved ANTHROPIC key (real adapter,
+  "All 1 provider(s) failed: anthropic" — bogus key). Stub would've faked success → confirms per-org keys
+  power generation. Real key → real output.
+- REMAINING refinements (not blocking): video rounds LOOP in generate-video (6× clips → concat to target),
+  real Drive folder creation (<Brand>/videos/<topic>/), full stage chaining research→generate→video→store.
+  Per-STEP provider selection (org.settings.pipelineStepProviders) is captured but adapter routing uses the
+  org's configured providers set (not yet per-step granular).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
