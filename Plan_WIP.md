@@ -198,6 +198,19 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
   Per-STEP provider selection (org.settings.pipelineStepProviders) is captured but adapter routing uses the
   org's configured providers set (not yet per-step granular).
 
+## Google Drive wired (2026-08-01) ✅ auth VERIFIED
+- Implemented real Drive v3 service-account client (packages/adapters/.../gdrive-client.ts): JWT RS256
+  auth (node:crypto) → token → find/create folder, ensureFolderPath(<Brand>/videos/<topic>), multipart upload.
+  No googleapis dep. Exported GDriveClient.
+- POST /integrations/:provider/test → live connectivity check. worker org-adapters maps google_drive →
+  GOOGLE_DRIVE_* env. UI: "Test connection" button on the Google Drive card + ai_video category.
+- **VERIFIED on VPS** with Carol's saved creds: auth=TRUE (service account
+  marketforge-storage@marketforge-504120.iam.gserviceaccount.com works); root_folder_ok=FALSE →
+  the folder must be SHARED (Editor) with the SA email, or the Root folder id fixed. So creds are valid;
+  only the Drive-side folder-share step remains (user action).
+- REMAINING to fully store output: implement DriveMirror.mirror() to call the client, and wire drive-mirror
+  processor to ensureFolderPath(<Brand>/videos/<topic>) + upload the generated asset. (Client is ready.)
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
