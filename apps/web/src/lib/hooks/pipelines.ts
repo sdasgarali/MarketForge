@@ -115,6 +115,37 @@ export function useResumePipelines() {
   return usePipelineAction('resume', () => 'Pipelines re-enabled');
 }
 
+export interface SupervisorStatus {
+  healthy: boolean;
+  failure_count: number;
+  recent_failures: Array<{ title: string; body: string; at: string }>;
+  can_diagnose: boolean;
+  diagnosis: string | null;
+}
+
+export function useSupervisor() {
+  return useQuery({
+    queryKey: ['pipelines', 'supervisor'],
+    queryFn: () => apiFetch<SupervisorStatus>('/pipelines/supervisor'),
+    refetchInterval: 15000,
+  });
+}
+
+export function useSeedDefaultBrands() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ seeded: number }>('/brands/seed-defaults', { method: 'POST' }),
+    onSuccess: (r) => {
+      toast.success(`Created ${r.seeded} brand${r.seeded === 1 ? '' : 's'}`);
+      void qc.invalidateQueries({ queryKey: KEY });
+      void qc.invalidateQueries({ queryKey: ['brands'] });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : 'Failed to create brands'),
+  });
+}
+
 export function useSetStepProvider() {
   const qc = useQueryClient();
   return useMutation({

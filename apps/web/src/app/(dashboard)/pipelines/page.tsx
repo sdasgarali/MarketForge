@@ -3,6 +3,7 @@
 import * as React from 'react';
 import {
   AlertTriangle,
+  Brain,
   ChevronRight,
   Loader2,
   Play,
@@ -14,8 +15,10 @@ import {
   type StepView,
   usePipelines,
   useResumePipelines,
+  useSeedDefaultBrands,
   useShutdownPipelines,
   useStartPipelines,
+  useSupervisor,
 } from '@/lib/hooks/pipelines';
 import { PageHeader } from '@/components/common/page-header';
 import { FadeIn } from '@/components/common/motion';
@@ -101,6 +104,8 @@ export default function PipelinesPage() {
   const start = useStartPipelines();
   const shutdown = useShutdownPipelines();
   const resume = useResumePipelines();
+  const seedBrands = useSeedDefaultBrands();
+  const { data: supervisor } = useSupervisor();
 
   const [activeStep, setActiveStep] = React.useState<StepView | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -172,6 +177,19 @@ export default function PipelinesPage() {
               {c}
             </button>
           ))}
+          {(data?.companies?.length ?? 0) === 0 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => seedBrands.mutate()}
+              disabled={seedBrands.isPending}
+            >
+              {seedBrands.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              Create default brands
+            </Button>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -270,6 +288,50 @@ export default function PipelinesPage() {
       {isLoading && !data ? (
         <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading pipeline status…
+        </div>
+      ) : null}
+
+      {/* Brain supervisor */}
+      {supervisor ? (
+        <div
+          className={`rounded-lg border p-4 ${
+            supervisor.healthy
+              ? 'border-border'
+              : 'border-amber-500/40 bg-amber-500/5'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-primary" />
+            <p className="text-sm font-semibold">Brain — supervisor</p>
+            {supervisor.healthy ? (
+              <Badge variant="secondary">All healthy</Badge>
+            ) : (
+              <Badge variant="destructive">
+                {supervisor.failure_count} recent failure
+                {supervisor.failure_count === 1 ? '' : 's'}
+              </Badge>
+            )}
+          </div>
+          {!supervisor.healthy ? (
+            <div className="mt-2 space-y-2">
+              {supervisor.diagnosis ? (
+                <p className="whitespace-pre-line rounded-md bg-muted/40 p-3 text-xs">
+                  {supervisor.diagnosis}
+                </p>
+              ) : supervisor.can_diagnose ? (
+                <p className="text-xs text-muted-foreground">Diagnosing…</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Configure a text-AI provider (Integrations) to enable AI diagnosis of failures.
+                </p>
+              )}
+              {supervisor.recent_failures.slice(0, 4).map((f, i) => (
+                <p key={i} className="text-xs text-muted-foreground">
+                  • {f.title}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
