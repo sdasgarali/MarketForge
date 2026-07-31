@@ -140,6 +140,21 @@ Interpreted operator's 3-pipeline diagram (Orchestrator / Video / Research) into
   (character-design AI, Higgsfield, market-research AI) are the design targets — wiring them to real
   generation is future work (ties into Slice 4: adapters consume per-org keys).
 
+## Multi-tenancy — IMPLEMENTED + ENFORCED (2026-08-01) ✅
+Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
+- **RLS enforcement**: created non-superuser/non-BYPASSRLS Postgres role `marketforge_app`
+  (scripts/provision-app-role.sh); VPS `.env` PROD_DATABASE_URL → app role (ADMIN_URL stays superuser
+  for migrations). RLS policies now actually filter by `app.current_org`.
+- **Per-signup org**: register provisions a dedicated organization + global user + admin membership
+  (apps/api/modules/auth/tenant.ts). JWT subject = Postgres user id (FK-safe); org_id = user's own org.
+- **Token-bound tenant**: JwtAuthProvider dropped the client-supplied `x-org-id` override — a user only
+  ever acts within the org their JWT was issued for. login prefers pgUserId (fallback Mongo id for legacy).
+- **VERIFIED**: founder→Exzelon only; tenantA→own empty org, creates AliceCorp; tenantB→sees nothing
+  (isolated); founder still only Exzelon. Spoof test: tenantB sending x-org-id=tenantA/seed → total:0.
+  Browser: new signup "Carol" → dashboard Active brands 0 (own org). Deployed (VPS api+worker + Vercel).
+- Legacy note: founder@marketforge.app + earlier Mongo users stay on the seed org (orgId unchanged);
+  new signups get fresh orgs. Multi-org-per-user switching = future (/auth re-issue after membership check).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
