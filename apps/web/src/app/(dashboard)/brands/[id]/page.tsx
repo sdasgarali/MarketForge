@@ -29,6 +29,7 @@ import { FadeIn } from '@/components/common/motion';
 import { BrandForm } from '@/components/brands/brand-form';
 import { useBrand, useSocialAccounts, useUpdateBrand } from '@/lib/hooks';
 import { BrandKnowledge } from '@/components/brands/brand-knowledge';
+import { BrandContacts } from '@/components/brands/brand-contacts';
 import { hueFromString, initials } from '@/lib/utils';
 import type { Brand } from '@/lib/types';
 
@@ -215,6 +216,10 @@ export default function BrandDetailPage() {
           </Card>
         </FadeIn>
       </div>
+
+      <FadeIn>
+        <BrandContacts brandId={id} />
+      </FadeIn>
 
       <FadeIn>
         <BrandKnowledge brandId={id} />
