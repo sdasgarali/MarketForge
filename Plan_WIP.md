@@ -75,10 +75,18 @@ Decision: web → Vercel, backend → shared Hostinger VPS (187.124.74.175). API
       Fixed next.config: gate `output:standalone`+tracingRoot behind `!VERCEL` (doubled-path deploy fail).
 - [x] API `API_CORS_ORIGINS` set to the 3 vercel aliases + mf-api restarted; preflight 204 with
       `Access-Control-Allow-Origin: https://marketforge-web.vercel.app`.
-- [ ] **NEXT — Clerk org ↔ Postgres org mirroring**: a real Clerk login must resolve to a DB org for RLS
-      scoping (seed org id `1111…1111`; bypass default org `…aa`). Needs: Clerk webhook (org/user created) →
-      upsert into orgs/users/org_memberships, and the web API client must send the Clerk session token +
-      active org id (`x-org-id`). Until then, sign-in renders but tenant-scoped API calls won't resolve.
+- [x] **Clerk auth UX BUILT + deployed** (commits 731a040, d0e70f6): sign-in/sign-up routes, `<AuthGate>`
+      (SignedOut→RedirectToSignIn), api-client attaches `Authorization: Bearer <Clerk token>` via
+      `window.Clerk.session.getToken()`, `clerkMiddleware` (guarded), ClerkProvider URLs, topbar sign-out.
+      Backend: `@clerk/backend` declared on **packages/auth** (the import-resolution site, not apps/api) →
+      verifyToken works (bogus token → "Invalid or expired token", not "Clerk not installed"). API rebuilt;
+      web redeployed. `/sign-in` 200 renders Clerk; middleware live (`X-Clerk-Auth-Status` header).
+      Tenant resolution: web sends `x-org-id`=seed org `1111…1111` → RLS returns Exzelon (role=viewer).
+- [ ] **Verify by real sign-in**: sign up at https://marketforge-web.vercel.app → dashboard should load
+      Exzelon data. If Clerk blocks the Vercel origin, add it in Clerk dashboard → allowed origins.
+- [ ] **Multi-tenant hardening (later)**: currently any authed Clerk user can pass `x-org-id`=seed org
+      (single-pilot-org model). For true multi-tenant: Clerk orgs + webhook mirroring orgs/users/memberships
+      into Postgres, drop client-supplied x-org-id trust. Also role is viewer (no writes) until org_role set.
 - [ ] Follow-up: no committed SQL migrations — prod uses `db:push` (tech-debt); upgrade Clerk dev→prod keys
       later (needs Clerk domain CNAMEs on neuraforz.com); `scripts/deploy.sh` reruns the whole flow.
 
