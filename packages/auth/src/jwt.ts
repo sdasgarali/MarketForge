@@ -4,7 +4,7 @@ import { jwtVerify } from 'jose';
 import type { TenantContext } from './context.js';
 import { UnauthorizedError } from './errors.js';
 import type { AuthProvider, AuthRequestLike } from './provider.js';
-import { extractActiveOrg, extractBearerToken } from './provider.js';
+import { extractBearerToken } from './provider.js';
 
 /**
  * Claims carried by a MarketForge-issued JWT (see apps/api jwt-sign). The token
@@ -54,7 +54,11 @@ export class JwtAuthProvider implements AuthProvider {
       );
     }
 
-    const orgId = extractActiveOrg(req) ?? claims.org_id;
+    // The tenant is bound to the TOKEN, never a client-supplied header — a user
+    // may only ever act within the org their JWT was issued for (multi-tenant
+    // isolation). Multi-org switching would re-issue a token after a membership
+    // check, not trust `x-org-id`.
+    const orgId = claims.org_id;
     if (!orgId) {
       throw new UnauthorizedError('Token is missing an organization');
     }

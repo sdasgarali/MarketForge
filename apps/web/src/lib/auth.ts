@@ -1,5 +1,6 @@
 'use client';
 
+import { setActiveOrgId } from './api-client';
 import { env } from './env';
 
 /**
@@ -68,6 +69,9 @@ async function postAuth(
     );
   }
   persist(data.token, data.user);
+  // Reflect the user's real tenant in the client (the API scopes by the token's
+  // org regardless, but keep the UI's active org consistent).
+  setActiveOrgId(data.user.org_id);
   return { token: data.token, user: data.user };
 }
 

@@ -3,7 +3,6 @@
  * PUBLIC — mounted before the authContext middleware. Users/credentials live in
  * MongoDB; each user is scoped to AUTH_DEFAULT_ORG_ID for Postgres RLS.
  */
-import { env } from '@marketforge/config';
 import { Router } from 'express';
 import { z } from 'zod';
 import { AppError, ConflictError } from '../../http/errors.js';
@@ -12,6 +11,7 @@ import { signToken } from '../../lib/jwt-sign.js';
 import { type UserDoc, usersCollection } from '../../lib/mongo.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { parseOrThrow } from '../../lib/validate.js';
+import { provisionTenant } from './tenant.js';
 
 export const authRouter: Router = Router();
 
@@ -47,25 +47,29 @@ authRouter.post(
       throw new ConflictError('An account with this email already exists');
     }
 
+    // Multi-tenant: every signup gets its OWN organization (isolated by RLS).
+    const tenant = await provisionTenant({ email, name: input.name });
+
     const doc: UserDoc = {
       email,
       passwordHash: hashPassword(input.password),
       ...(input.name ? { name: input.name } : {}),
-      orgId: env.AUTH_DEFAULT_ORG_ID,
-      role: env.AUTH_DEFAULT_ROLE,
+      orgId: tenant.orgId,
+      pgUserId: tenant.userId,
+      role: 'admin',
       createdAt: new Date(),
     };
-    const { insertedId } = await users.insertOne(doc);
-    const id = insertedId.toString();
+    await users.insertOne(doc);
 
+    // JWT subject is the Postgres user id (FK-safe identity).
     const token = await signToken({
-      userId: id,
+      userId: tenant.userId,
       email,
       ...(input.name ? { name: input.name } : {}),
       orgId: doc.orgId,
       role: doc.role,
     });
-    res.status(201).json({ token, user: publicUser(id, doc) });
+    res.status(201).json({ token, user: publicUser(tenant.userId, doc) });
   }),
 );
 
@@ -84,13 +88,16 @@ authRouter.post(
 
     await users.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } });
 
+    // Prefer the Postgres user id (FK-safe); fall back to the Mongo id for
+    // accounts created before multi-tenant provisioning.
+    const subject = user.pgUserId ?? user._id.toString();
     const token = await signToken({
-      userId: user._id.toString(),
+      userId: subject,
       email: user.email,
       ...(user.name ? { name: user.name } : {}),
       orgId: user.orgId,
       role: user.role,
     });
-    res.json({ token, user: publicUser(user._id.toString(), user) });
+    res.json({ token, user: publicUser(subject, user) });
   }),
 );

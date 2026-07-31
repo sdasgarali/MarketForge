@@ -12,6 +12,8 @@ export interface UserDoc {
   name?: string;
   /** MarketForge (Postgres) org this user is scoped to for RLS. */
   orgId: string;
+  /** Postgres users.id — the JWT subject (FK-safe, per-tenant identity). */
+  pgUserId?: string;
   role: 'admin' | 'manager' | 'editor' | 'viewer';
   createdAt: Date;
   lastLoginAt?: Date;
