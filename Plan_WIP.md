@@ -167,6 +167,20 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
 - NEXT: the per-step provider + key are stored; wiring the WORKER to actually build adapters from the
   chosen provider's key at generation time is the remaining piece (Slice 4 / makes steps go live).
 
+## Brand + social run config on pipelines (2026-08-01) ✅ LIVE + TESTED
+- Brand pills (All brands / Neuraforz / Exzelon / Medeoan / Tavakkul) + Social pills (Instagram/X/
+  YouTube/TikTok/Facebook/LinkedIn) on the pipeline page. Start uses the selection.
+- "All brands" → enqueues a research job per brand IN PARALLEL (verified runs:4).
+- Duration→rounds plan: platform target seconds → ceil(target/10) 10s rounds (Instagram 60s = 6 rounds,
+  the operator's "1min = 6×10s" rule). Folder template `<Brand>/videos/<topic>/`. Shown in a run-plan hint.
+- api: PLATFORMS + buildRunPlan + planVideoRounds; POST /pipelines/start {brands,platform} returns plans.
+- VERIFIED browser: "Start all 4 brands" + hint "6 × 10s clips per brand · <Brand>/videos/<topic>/ ·
+  4 brands run in parallel". Deployed (VPS api + Vercel web).
+- HONEST GAP (unchanged): this is the control surface + run PLANNING + parallel orchestration. Actual
+  per-brand RAG, real Drive folder creation (topic subfolder), and looping video generation (6× rounds →
+  store in the topic folder) need the GENERATION pipeline wired to real adapters/keys/Drive (Slice 4).
+  Right now Start enqueues jobs that run as stubs (no real keys consumed).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
