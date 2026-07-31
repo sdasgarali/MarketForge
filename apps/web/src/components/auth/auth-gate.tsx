@@ -1,25 +1,26 @@
 'use client';
 
 import * as React from 'react';
-import { RedirectToSignIn, SignedIn, SignedOut } from '@clerk/nextjs';
-import { clerkEnabled } from '@/lib/env';
+import { useRouter } from 'next/navigation';
+import { isAuthenticated } from '@/lib/auth';
 
 /**
- * Gates protected app routes. When Clerk is enabled, signed-out users are
- * redirected to the sign-in flow; signed-in users see the app. When bypass is
- * on (no Clerk), children render directly (the mock/bypass identity is used).
- *
- * `clerkEnabled` is a build-time constant, so the branch is stable across
- * renders — no rules-of-hooks violation from the conditional return.
+ * Client-side route guard for the manual JWT flow. If there's no token in
+ * localStorage, redirect to /sign-in; otherwise render the app. Renders nothing
+ * until the check runs (avoids a flash of the dashboard before redirect).
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  if (!clerkEnabled) return <>{children}</>;
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
-  );
+  const router = useRouter();
+  const [ok, setOk] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isAuthenticated()) {
+      setOk(true);
+    } else {
+      router.replace('/sign-in');
+    }
+  }, [router]);
+
+  if (!ok) return null;
+  return <>{children}</>;
 }

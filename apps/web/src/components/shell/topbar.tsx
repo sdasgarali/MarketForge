@@ -3,9 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useClerk } from '@clerk/nextjs';
 import { Bell, Flame, LogOut, Menu, Search, User } from 'lucide-react';
-import { clerkEnabled } from '@/lib/env';
+import { logout } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -30,24 +29,6 @@ import { SidebarNav } from './sidebar-nav';
 import { navSections } from './nav';
 import { useMe, useNotifications } from '@/lib/hooks';
 import { initials } from '@/lib/utils';
-
-/**
- * Clerk-backed sign-out item. Isolated in its own component so `useClerk` is
- * only invoked when Clerk is enabled (it requires ClerkProvider). `clerkEnabled`
- * is a build constant, so mounting this conditionally is rules-of-hooks safe.
- */
-function ClerkSignOutItem() {
-  const { signOut } = useClerk();
-  return (
-    <DropdownMenuItem
-      onClick={() => void signOut({ redirectUrl: '/sign-in' })}
-      className="text-destructive focus:text-destructive"
-    >
-      <LogOut className="h-4 w-4" />
-      Sign out
-    </DropdownMenuItem>
-  );
-}
 
 function currentTitle(pathname: string): string {
   for (const s of navSections) {
@@ -162,14 +143,13 @@ export function Topbar() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {clerkEnabled ? (
-              <ClerkSignOutItem />
-            ) : (
-              <DropdownMenuItem className="text-destructive focus:text-destructive">
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem
+              onClick={() => logout()}
+              className="text-destructive focus:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -1,27 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { ClerkProvider } from '@clerk/nextjs';
-import { clerkEnabled, env } from '@/lib/env';
 
 /**
- * Auth gate. When DEV_AUTH_BYPASS is on (or no Clerk key is present) we render
- * children directly — the app runs with the mock/bypass identity. Otherwise we
- * mount ClerkProvider so real sessions and org membership drive auth.
+ * Auth is token-based (localStorage) and read directly by the api-client, so
+ * there's no context provider to mount. Kept as a passthrough to preserve the
+ * provider tree shape (see providers/index).
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  if (!clerkEnabled) {
-    return <>{children}</>;
-  }
-  return (
-    <ClerkProvider
-      publishableKey={env.clerkPublishableKey}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/dashboard"
-      signUpFallbackRedirectUrl="/dashboard"
-    >
-      {children}
-    </ClerkProvider>
-  );
+  return <>{children}</>;
 }
