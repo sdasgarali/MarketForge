@@ -24,6 +24,7 @@ export interface Integration {
   category:
     | 'ai_text'
     | 'ai_image'
+    | 'ai_video'
     | 'ai_voice'
     | 'publishing'
     | 'storage';
@@ -58,6 +59,33 @@ export function useSetIntegration() {
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     },
+  });
+}
+
+export interface TestResult {
+  ok: boolean;
+  provider: string;
+  error?: string;
+  detail?: {
+    auth?: boolean;
+    service_account?: string;
+    root_folder_ok?: boolean;
+    root_folder?: string;
+    hint?: string;
+  };
+}
+
+export function useTestIntegration() {
+  return useMutation({
+    mutationFn: (provider: string) =>
+      apiFetch<TestResult>(`/integrations/${provider}/test`, { method: 'POST' }),
+    onSuccess: (r) => {
+      const msg = r.detail?.hint ?? r.error ?? (r.ok ? 'Connected' : 'Not connected');
+      if (r.ok && r.detail?.root_folder_ok !== false) toast.success(`✓ ${msg}`);
+      else toast.warning(msg);
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : 'Test failed'),
   });
 }
 

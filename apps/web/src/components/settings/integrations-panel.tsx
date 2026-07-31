@@ -1,12 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Check, Loader2, Plug, Trash2 } from 'lucide-react';
+import { Check, Loader2, Plug, PlugZap, Trash2 } from 'lucide-react';
 import {
   type Integration,
   useIntegrations,
   useRemoveIntegration,
   useSetIntegration,
+  useTestIntegration,
 } from '@/lib/hooks/integrations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 
 const CATEGORY_LABELS: Record<Integration['category'], string> = {
   ai_text: 'AI — text',
-  ai_image: 'AI — image & video',
+  ai_image: 'AI — image',
+  ai_video: 'AI — video',
   ai_voice: 'AI — voice',
   publishing: 'Publishing',
   storage: 'Storage',
@@ -25,6 +27,7 @@ const CATEGORY_LABELS: Record<Integration['category'], string> = {
 const CATEGORY_ORDER: Integration['category'][] = [
   'ai_text',
   'ai_image',
+  'ai_video',
   'ai_voice',
   'publishing',
   'storage',
@@ -33,6 +36,7 @@ const CATEGORY_ORDER: Integration['category'][] = [
 function ProviderCard({ integration }: { integration: Integration }) {
   const setMut = useSetIntegration();
   const removeMut = useRemoveIntegration();
+  const testMut = useTestIntegration();
   const [values, setValues] = React.useState<Record<string, string>>(() =>
     Object.fromEntries(
       integration.fields.map((f) => [f.key, f.secret ? '' : f.value]),
@@ -116,6 +120,21 @@ function ProviderCard({ integration }: { integration: Integration }) {
           {setMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {integration.configured ? 'Update' : 'Connect'}
         </Button>
+        {integration.configured && integration.id === 'google_drive' ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => testMut.mutate(integration.id)}
+            disabled={testMut.isPending}
+          >
+            {testMut.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <PlugZap className="h-4 w-4" />
+            )}
+            Test connection
+          </Button>
+        ) : null}
         {integration.configured ? (
           <Button
             size="sm"
