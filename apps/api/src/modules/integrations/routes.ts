@@ -44,6 +44,24 @@ integrationsRouter.put(
   }),
 );
 
+integrationsRouter.post(
+  '/:provider/test',
+  requireMinRole('admin'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    const provider = req.params.provider as string;
+    try {
+      res.json(await integrationsService.test(ctx.orgId, provider));
+    } catch (err) {
+      res.status(200).json({
+        ok: false,
+        provider,
+        error: err instanceof Error ? err.message : 'Connection failed',
+      });
+    }
+  }),
+);
+
 integrationsRouter.delete(
   '/:provider',
   requireMinRole('admin'),

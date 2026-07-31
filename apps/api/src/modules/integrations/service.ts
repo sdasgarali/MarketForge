@@ -5,6 +5,7 @@
  * cleartext — `list()` returns only non-secret field values + a "set" flag.
  */
 import { and, eq, isNull } from 'drizzle-orm';
+import { GDriveClient } from '@marketforge/adapters';
 import { apiCredentials, db, withTenant } from '@marketforge/db';
 import {
   type EncryptedSecret,
@@ -159,6 +160,28 @@ export const integrationsService = {
         .where(and(eq(apiCredentials.kind, kind), isNull(apiCredentials.brandId)));
     });
     return { id: providerId };
+  },
+
+  /**
+   * Live connectivity test for a provider (currently Google Drive): decrypt the
+   * stored creds and hit the provider to confirm they actually work.
+   */
+  async test(orgId: string, providerId: string) {
+    const values = await this.resolve(orgId, providerId);
+    if (!values) {
+      throw new NotFoundError(`${providerId} is not configured`);
+    }
+    if (providerId === 'google_drive') {
+      const client = new GDriveClient({
+        clientEmail: values.clientEmail ?? '',
+        privateKey: values.privateKey ?? '',
+        rootFolderId: values.rootFolderId || undefined,
+      });
+      const result = await client.test();
+      return { ok: true, provider: providerId, detail: result };
+    }
+    // Other providers: presence check only (no cheap probe available).
+    return { ok: true, provider: providerId, detail: { configured: true } };
   },
 
   /** Decrypt a provider's stored credentials (for the worker/adapters). */

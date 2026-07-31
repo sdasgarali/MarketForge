@@ -40,6 +40,11 @@ const PROVIDER_TO_ENV: Record<string, (v: Vals) => Partial<AdapterEnv>> = {
     S3_ACCESS_KEY_ID: v.accessKeyId,
     S3_SECRET_ACCESS_KEY: v.secretAccessKey,
   }),
+  google_drive: (v) => ({
+    GOOGLE_DRIVE_CLIENT_EMAIL: v.clientEmail,
+    GOOGLE_DRIVE_PRIVATE_KEY: v.privateKey,
+    GOOGLE_DRIVE_ROOT_FOLDER_ID: v.rootFolderId,
+  }),
 };
 
 interface CipherRow {

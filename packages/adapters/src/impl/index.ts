@@ -38,6 +38,7 @@ export {
 export { S3StorageAdapter } from './storage/s3.js';
 export { LocalDiskStorageAdapter } from './storage/localdisk.js';
 export { DriveMirror } from './storage/drive-mirror.js';
+export { GDriveClient, type GDriveConfig, type DriveFile } from './storage/gdrive-client.js';
 
 // Pricing + cost helpers
 export {
