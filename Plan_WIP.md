@@ -211,6 +211,21 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
 - REMAINING to fully store output: implement DriveMirror.mirror() to call the client, and wire drive-mirror
   processor to ensureFolderPath(<Brand>/videos/<topic>) + upload the generated asset. (Client is ready.)
 
+## NVIDIA provider + per-step model selection (2026-08-01) ✅ LIVE + TESTED
+- NVIDIA NIM (build.nvidia.com, OpenAI-compatible, free tier) added as a real routing LLM provider:
+  models.ts (NVIDIA_MODELS, ProviderKey+nvidia, TASK_PROVIDER_ORDER, NVIDIA_BASE_URL), routing
+  (providerForModelHint meta//nvidia//deepseek-ai/ → nvidia; RoutingProviders.nvidia), openai adapter
+  gained defaultModel/providerName opts (backs NVIDIA), factory buildLlm (NVIDIA_API_KEY), worker
+  org-adapters mapping, integrations registry ("NVIDIA NIM (free)"), pipeline text-step option.
+  Adapter tests 33/33. → save an nvapi key and generation uses NVIDIA free.
+- Per-step MODEL selection: tile dialog shows a Model dropdown per provider (models from backend);
+  stored as {provider, model} in org.settings.pipelineStepProviders (legacy string still read);
+  PUT /pipelines/steps/:id/provider accepts+validates model. Tile shows "AI: provider · model".
+- VERIFIED browser (Carol): AI 1 dialog lists NVIDIA option; selecting it switches Model dropdown to
+  NVIDIA's 3 models. Deployed (VPS api+worker + Vercel web).
+- REMAINING: pass the chosen model as modelHint into the agent LLM call at generation time (same
+  threading as per-step provider execution — stored/displayed now, not yet forwarded to the call).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
