@@ -226,6 +226,21 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
 - REMAINING: pass the chosen model as modelHint into the agent LLM call at generation time (same
   threading as per-step provider execution — stored/displayed now, not yet forwarded to the call).
 
+## Real brands + per-brand RAG + brain supervisor (2026-08-01) ✅ LIVE + TESTED
+- **Brand mismatch FIXED**: pipeline used hardcoded COMPANIES while /brands showed real records (fresh
+  tenants had none). Now: pipeline `companies` = real brand names; POST /brands/seed-defaults creates the
+  4 companies as real records (idempotent); web shows "Create default brands" when empty. Verified: Carol
+  (0 brands) → clicked → 4 real brands appear in pipeline + Brands.
+- **Per-brand RAG**: new `brand_knowledge` table (RLS + grant to marketforge_app; created via direct DDL —
+  db:push isn't incremental, note for future). GET/POST/DELETE /brands/:id/knowledge + POST .../refresh
+  (AI researches brand via the org LLM → stores snippets). Brand detail page has a Knowledge base (RAG)
+  section (add manually + "Refresh with AI"). org-llm.ts builds an LLM from the org's saved keys.
+- **Brain supervisor**: GET /pipelines/supervisor reads recent failures + org LLM → diagnosis + fixes.
+  Monitor shows a "Brain — supervisor" panel. VERIFIED: with a working LLM it diagnosed the 14 failures
+  correctly ("research jobs missing brand_id" + 3 concrete fixes).
+- REMAINING: RAG retrieval at generation time (store✓, retrieve-into-prompt pending); self-updating RAG on
+  a schedule (manual "Refresh with AI" now); supervisor auto-remediation (diagnoses now, doesn't auto-act).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
