@@ -101,14 +101,52 @@ export class GDriveClient {
     return (await res.json()) as T;
   }
 
-  /** Connectivity probe: auth + read the target folder (or root) metadata. */
-  async test(): Promise<{ ok: true; email: string; rootFolderId: string }> {
-    await this.accessToken(); // throws on bad creds
-    const target = this.rootFolderId ?? 'root';
-    const meta = await this.api<{ id: string; name?: string }>(
-      `/files/${target}?fields=id,name&supportsAllDrives=true`,
-    );
-    return { ok: true, email: this.clientEmail, rootFolderId: meta.id };
+  /**
+   * Connectivity probe: confirm the service-account creds authenticate, then
+   * (if a root folder is set) confirm it's reachable. Returns an actionable hint
+   * when auth works but the folder isn't shared with the service account.
+   */
+  async test(): Promise<{
+    ok: boolean;
+    auth: boolean;
+    service_account: string;
+    root_folder_ok: boolean;
+    root_folder?: string;
+    hint?: string;
+  }> {
+    await this.accessToken(); // throws on bad creds (invalid key/email)
+    // A files.list always works for a valid service account (its own Drive).
+    await this.api('/files?pageSize=1&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true');
+
+    if (!this.rootFolderId) {
+      return {
+        ok: true,
+        auth: true,
+        service_account: this.clientEmail,
+        root_folder_ok: true,
+        hint: 'Authenticated. No root folder set — content will land in the service account’s own Drive.',
+      };
+    }
+    try {
+      const meta = await this.api<{ id: string; name?: string }>(
+        `/files/${this.rootFolderId}?fields=id,name&supportsAllDrives=true`,
+      );
+      return {
+        ok: true,
+        auth: true,
+        service_account: this.clientEmail,
+        root_folder_ok: true,
+        root_folder: meta.name ?? meta.id,
+      };
+    } catch {
+      return {
+        ok: false,
+        auth: true,
+        service_account: this.clientEmail,
+        root_folder_ok: false,
+        hint: `Credentials work, but the root folder isn’t accessible. In Google Drive, share that folder (Editor) with ${this.clientEmail} — or fix the Root folder id.`,
+      };
+    }
   }
 
   private async findFolder(name: string, parentId: string): Promise<string | undefined> {
