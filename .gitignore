@@ -49,3 +49,7 @@ n8n-data/
 # local runtime
 n8n.log
 .env
+
+# Local artifacts
+.playwright-mcp/
+marketforge-*.png

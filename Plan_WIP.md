@@ -104,6 +104,27 @@ User dropped Clerk for own JWT login backed by MongoDB Atlas.
 - Note: Clerk backend code (packages/auth/clerk.ts, @clerk/backend dep) left in place but unused (JWT wins);
   Vercel Clerk env vars now unused/harmless. Single-pilot-org model unchanged (all users → seed org, admin).
 
+## Remove n8n + website control panel (2026-07-31) — SLICES 1-3 DONE
+- [x] **Slice 1 — n8n removed**: worker publish/analytics call adapters directly; deleted lib/n8n.js,
+      apps/n8n/, N8N_* config/constants/compose/env. VPS n8n containers removed (--remove-orphans).
+      Typecheck 19/19, worker tests 23/23. Port 5679 freed on VPS.
+- [x] **Slice 2 — integrations backend**: `apps/api/modules/integrations` (admin, tenant-scoped)
+      GET/PUT/DELETE /integrations. Provider registry (anthropic/openai/gemini/groq/openrouter/fal/
+      elevenlabs/ayrshare/s3/google_drive). Creds = one envelope-encrypted JSON blob per provider in
+      api_credentials (kind=provider:<id>); secrets write-only. Audited. `integrationsService.resolve()`
+      ready for the worker.
+- [x] **Slice 3 — Settings > Integrations UI**: real panel (useIntegrations + set/remove), per-provider
+      fields, Connected status, Update/Remove. VERIFIED in browser: Anthropic (via API) + fal.ai (via UI)
+      → "Connected". Deployed (VPS api + Vercel web).
+- [ ] **Slice 4 — adapters consume per-org keys**: worker currently builds adapters from ENV at boot.
+      Wire `integrationsService.resolve(orgId, provider)` into a per-org adapter builder (with cache +
+      env fallback) so generation/publish use the org's OWN stored keys. THIS is what makes the saved
+      keys actually take effect at generation time.
+- [ ] **Slice 5 — social/publishing from UI**: surface social_accounts connect/disconnect per brand
+      (backend service exists) in the brand detail page.
+- [ ] **Slice 6 — automation & schedules from UI**: brand publishingSchedule + pipeline trigger controls;
+      backend enqueue endpoints.
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
