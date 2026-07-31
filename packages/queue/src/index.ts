@@ -67,6 +67,15 @@ export {
   getDeadLetterQueue,
 } from './options.js';
 
+// Global emergency kill switch
+export {
+  engageKillSwitch,
+  clearKillSwitch,
+  isKillSwitchEngaged,
+  killSwitchStatus,
+  type KillSwitchStatus,
+} from './killswitch.js';
+
 // Convenience re-exports from contracts
 export { JOB_NAMES } from '@marketforge/contracts';
 export type { JobName, PayloadFor } from '@marketforge/contracts';

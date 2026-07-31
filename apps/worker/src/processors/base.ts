@@ -8,11 +8,11 @@
  * The queue package already validates the payload against its Zod schema before
  * the handler runs, so handlers receive canonical, defaulted input.
  */
-import type { Job } from '@marketforge/queue';
+import { type Job, isKillSwitchEngaged } from '@marketforge/queue';
 import type { JobName, PayloadFor } from '@marketforge/contracts';
 import { createLogger, type Logger } from '@marketforge/logger';
 import { SERVICE } from '../lib/constants.js';
-import { isTerminalError, toError } from '../lib/errors.js';
+import { isTerminalError, TerminalError, toError } from '../lib/errors.js';
 import { routeToDlq } from '../lib/failure.js';
 
 export interface ProcessorCtx<N extends JobName> {
@@ -38,6 +38,11 @@ export function defineProcessor<N extends JobName>(name: N, handler: Handler<N>)
     });
 
     try {
+      // Emergency kill switch: abort immediately if the operator force-stopped
+      // the pipelines. Terminal → the job is DLQ'd, not retried.
+      if (await isKillSwitchEngaged()) {
+        throw new TerminalError('kill switch engaged — pipeline force-stopped');
+      }
       return await handler({ job, payload, log });
     } catch (err) {
       const error = toError(err);

@@ -8,6 +8,7 @@ import {
   Megaphone,
   Settings,
   Sparkles,
+  Workflow,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -41,6 +42,12 @@ export const navSections: NavSection[] = [
         icon: CheckCircle2,
         badge: 'approvals',
       },
+    ],
+  },
+  {
+    title: 'Automation',
+    items: [
+      { label: 'Pipelines', href: '/pipelines', icon: Workflow },
     ],
   },
   {

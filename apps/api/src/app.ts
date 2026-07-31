@@ -30,6 +30,7 @@ import { dashboardRouter } from './modules/dashboard/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
 import { apiKeysRouter } from './modules/api-keys/routes.js';
 import { integrationsRouter } from './modules/integrations/routes.js';
+import { pipelinesRouter } from './modules/pipelines/routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -99,6 +100,7 @@ export function createApp(): Express {
   app.use('/', notificationsRouter); // /notifications
   app.use('/api-keys', apiKeysRouter);
   app.use('/integrations', integrationsRouter);
+  app.use('/pipelines', pipelinesRouter);
 
   // 8. 404 + centralized error handler (last).
   app.use(notFound);
