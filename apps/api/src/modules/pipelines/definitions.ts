@@ -24,8 +24,56 @@ export interface PipelineDef {
   branches?: string[];
 }
 
-/** Companies whose CSVs / assets the pipelines fan out across. */
+/** Companies (brands) whose CSVs / assets the pipelines fan out across. */
 export const COMPANIES = ['Neuraforz', 'Exzelon', 'Medeoan', 'Tavakkul'] as const;
+
+/** Social platforms a run can target. `id` matches the Platform enum. */
+export const PLATFORMS = [
+  { id: 'instagram', label: 'Instagram', targetSeconds: 60 },
+  { id: 'x', label: 'X', targetSeconds: 45 },
+  { id: 'youtube', label: 'YouTube', targetSeconds: 60 },
+  { id: 'tiktok', label: 'TikTok', targetSeconds: 60 },
+  { id: 'facebook', label: 'Facebook', targetSeconds: 45 },
+  { id: 'linkedin', label: 'LinkedIn', targetSeconds: 45 },
+] as const;
+
+export type PlatformId = (typeof PLATFORMS)[number]['id'];
+
+/** Per-clip length a single generation produces (Kling short-form). */
+export const CLIP_SECONDS = 10;
+
+/**
+ * How many generation rounds are needed to reach the target duration when each
+ * round yields a `clipSeconds` clip. e.g. 60s target / 10s clip = 6 rounds —
+ * exactly the operator's "1 min needs 6 rounds of 10s" rule.
+ */
+export function planVideoRounds(targetSeconds: number, clipSeconds = CLIP_SECONDS): number {
+  if (clipSeconds <= 0) return 1;
+  return Math.max(1, Math.ceil(targetSeconds / clipSeconds));
+}
+
+export interface RunPlan {
+  brand: string;
+  platform: PlatformId;
+  target_seconds: number;
+  clip_seconds: number;
+  rounds: number;
+  /** Where finished content lands: <Brand>/videos/<topic>/ (topic subfolder created after research). */
+  folder_template: string;
+}
+
+export function buildRunPlan(brand: string, platform: PlatformId): RunPlan {
+  const def = PLATFORMS.find((p) => p.id === platform) ?? PLATFORMS[0];
+  const target = def.targetSeconds;
+  return {
+    brand,
+    platform,
+    target_seconds: target,
+    clip_seconds: CLIP_SECONDS,
+    rounds: planVideoRounds(target),
+    folder_template: `${brand}/videos/{topic}`,
+  };
+}
 
 export const PIPELINES: PipelineDef[] = [
   {

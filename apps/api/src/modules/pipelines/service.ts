@@ -20,7 +20,10 @@ import {
   COMPANIES,
   PIPELINES,
   PIPELINE_QUEUES,
+  PLATFORMS,
+  type PlatformId,
   STEP_PROVIDER_OPTIONS,
+  buildRunPlan,
   providerOptionsForStep,
 } from './definitions.js';
 
@@ -119,22 +122,42 @@ export const pipelinesService = {
     return {
       kill_switch: kill,
       companies: COMPANIES,
+      platforms: PLATFORMS,
       queues: snap,
       pipelines,
       totals,
     };
   },
 
-  /** Auto button — clear the kill switch, resume queues, kick Pipeline 1. */
-  async start(orgId: string) {
+  /**
+   * Start a run for one/all brands on a platform. Enqueues a research job per
+   * brand — brands run in PARALLEL. Each run carries a plan (target duration →
+   * number of 10s rounds, and the <Brand>/videos/<topic> folder template).
+   */
+  async start(
+    orgId: string,
+    opts: { brands?: string[]; platform?: string } = {},
+  ) {
     await clearKillSwitch();
     await Promise.allSettled(JOB_NAMES.map((n) => getQueue(n).resume()));
-    await enqueue('research', {
-      org_id: orgId,
-      attempt_reason: 'manual',
-      topic: 'orchestrator: check for new contacts',
-    });
-    return { started: true };
+
+    const platform: PlatformId =
+      PLATFORMS.find((p) => p.id === opts.platform)?.id ?? 'instagram';
+    const targets =
+      opts.brands && opts.brands.length ? opts.brands : [...COMPANIES];
+    const plans = targets.map((b) => buildRunPlan(b, platform));
+
+    await Promise.all(
+      plans.map((plan) =>
+        enqueue('research', {
+          org_id: orgId,
+          platform,
+          attempt_reason: 'manual',
+          topic: `${plan.brand} · ${platform} · ~${plan.target_seconds}s (${plan.rounds}×${plan.clip_seconds}s) → ${plan.folder_template}`,
+        }),
+      ),
+    );
+    return { started: true, runs: plans.length, platform, plans };
   },
 
   /** Force shutdown — engage kill switch + pause + obliterate EVERY queue. */

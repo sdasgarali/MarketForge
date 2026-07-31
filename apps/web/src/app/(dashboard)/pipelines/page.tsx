@@ -109,6 +109,18 @@ export default function PipelinesPage() {
   const killed = data?.kill_switch.engaged ?? false;
   const busy = start.isPending || shutdown.isPending || resume.isPending;
 
+  // Run configuration: which brand(s) + which social platform.
+  const [brand, setBrand] = React.useState<string>('all');
+  const [platform, setPlatform] = React.useState<string>('instagram');
+  const platformOpt = data?.platforms.find((p) => p.id === platform);
+  const rounds = platformOpt ? Math.ceil(platformOpt.targetSeconds / 10) : 0;
+  const brandCount = brand === 'all' ? (data?.companies.length ?? 0) : 1;
+
+  function startRun() {
+    const brands = brand === 'all' ? (data?.companies ?? []) : [brand];
+    start.mutate({ brands, platform });
+  }
+
   function onShutdown() {
     if (
       window.confirm(
@@ -126,17 +138,86 @@ export default function PipelinesPage() {
         description="Live view of the automation pipelines. Start the orchestrator or force-stop everything."
       />
 
+      {/* Run configuration — brand(s) + social platform */}
+      <div className="space-y-3 rounded-lg border border-border p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-16 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Brand
+          </span>
+          <button
+            type="button"
+            onClick={() => setBrand('all')}
+            className={`rounded-full border px-3 py-1 text-sm transition ${
+              brand === 'all'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border hover:border-primary/50'
+            }`}
+          >
+            All brands
+          </button>
+          {(data?.companies ?? []).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setBrand(c)}
+              className={`rounded-full border px-3 py-1 text-sm transition ${
+                brand === c
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-16 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Social
+          </span>
+          {(data?.platforms ?? []).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPlatform(p.id)}
+              className={`rounded-full border px-3 py-1 text-sm transition ${
+                platform === p.id
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Button onClick={startRun} disabled={busy}>
+            {start.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            Start {brand === 'all' ? `all ${brandCount} brands` : brand}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {platformOpt ? (
+              <>
+                {platformOpt.label}: AI targets ~{platformOpt.targetSeconds}s →{' '}
+                <span className="font-medium text-foreground">
+                  {rounds} × 10s clips
+                </span>{' '}
+                per brand · stored in{' '}
+                <span className="font-mono">&lt;Brand&gt;/videos/&lt;topic&gt;/</span>
+                {brand === 'all' ? ` · ${brandCount} brands run in parallel` : ''}
+              </>
+            ) : null}
+          </p>
+        </div>
+      </div>
+
       {/* Control bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => start.mutate()} disabled={busy}>
-          {start.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="h-4 w-4" />
-          )}
-          Auto — start
-        </Button>
-
         <Button variant="destructive" onClick={onShutdown} disabled={busy}>
           {shutdown.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />

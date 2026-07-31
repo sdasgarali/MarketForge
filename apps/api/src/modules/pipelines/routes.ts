@@ -41,12 +41,18 @@ pipelinesRouter.put(
   }),
 );
 
+const StartInput = z.object({
+  brands: z.array(z.string()).optional(),
+  platform: z.string().optional(),
+});
+
 pipelinesRouter.post(
   '/start',
   requireMinRole('admin'),
   asyncHandler(async (req, res) => {
     const ctx = getCtx(req);
-    const result = await pipelinesService.start(ctx.orgId);
+    const input = parseOrThrow(StartInput, req.body ?? {});
+    const result = await pipelinesService.start(ctx.orgId, input);
     await writeAudit(ctx, { action: 'pipelines.start', entityType: 'pipeline' }, req);
     res.json(result);
   }),

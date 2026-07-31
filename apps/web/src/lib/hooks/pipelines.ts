@@ -31,9 +31,16 @@ export interface PipelineView {
   steps: StepView[];
 }
 
+export interface PlatformOption {
+  id: string;
+  label: string;
+  targetSeconds: number;
+}
+
 export interface PipelinesStatus {
   kill_switch: { engaged: boolean; at?: string; reason?: string; by?: string };
   companies: string[];
+  platforms: PlatformOption[];
   totals: { active: number; waiting: number; failed: number; completed: number };
   pipelines: PipelineView[];
 }
@@ -66,8 +73,32 @@ function usePipelineAction(
   });
 }
 
+export interface RunPlan {
+  brand: string;
+  platform: string;
+  target_seconds: number;
+  clip_seconds: number;
+  rounds: number;
+  folder_template: string;
+}
+
 export function useStartPipelines() {
-  return usePipelineAction('start', () => 'Pipelines started');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { brands?: string[]; platform?: string }) =>
+      apiFetch<{ started: boolean; runs: number; platform: string; plans: RunPlan[] }>(
+        '/pipelines/start',
+        { method: 'POST', body: input },
+      ),
+    onSuccess: (r) => {
+      toast.success(
+        `Started ${r.runs} run${r.runs === 1 ? '' : 's'} on ${r.platform}`,
+      );
+      void qc.invalidateQueries({ queryKey: KEY });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : 'Failed to start'),
+  });
 }
 
 export function useShutdownPipelines() {
