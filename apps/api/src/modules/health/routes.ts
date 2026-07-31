@@ -5,11 +5,32 @@
  */
 import { Router } from 'express';
 import { sql } from 'drizzle-orm';
+import { env } from '@marketforge/config';
 import { db } from '@marketforge/db';
 import { connection } from '@marketforge/queue';
 import { asyncHandler } from '../../lib/async-handler.js';
 
 export const healthRouter: Router = Router();
+
+/**
+ * Public root. This host is an API, not a website — a human hitting it in a
+ * browser would otherwise get a 401 from the authed routes and think it's
+ * broken. So browser visits (Accept: text/html) are redirected to the web app;
+ * programmatic clients get a small JSON banner. No auth (mounted before authContext).
+ */
+healthRouter.get('/', (req, res) => {
+  const appUrl = env.WEB_BASE_URL;
+  if ((req.headers.accept ?? '').includes('text/html')) {
+    res.redirect(302, appUrl);
+    return;
+  }
+  res.json({ service: 'marketforge-api', status: 'ok', app: appUrl });
+});
+
+// Browsers auto-request /favicon.ico; answer 204 so it isn't a noisy 401.
+healthRouter.get('/favicon.ico', (_req, res) => {
+  res.status(204).end();
+});
 
 healthRouter.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'api', time: new Date().toISOString() });
