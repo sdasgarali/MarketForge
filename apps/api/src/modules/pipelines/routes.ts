@@ -22,6 +22,15 @@ pipelinesRouter.get(
   }),
 );
 
+pipelinesRouter.get(
+  '/supervisor',
+  requireMinRole('viewer'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    res.json(await pipelinesService.supervisor(ctx.orgId));
+  }),
+);
+
 const SetProviderInput = z.object({
   provider: z.string().min(1),
   model: z.string().optional(),

@@ -35,6 +35,7 @@ DECLARE
   tenant_tables text[] := ARRAY[
     'org_memberships',
     'brands',
+    'brand_knowledge',
     'social_accounts',
     'campaigns',
     'content_items',

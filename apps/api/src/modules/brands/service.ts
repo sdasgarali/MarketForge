@@ -107,6 +107,38 @@ export const brandsService = {
       return { id: row.id };
     });
   },
+
+  /**
+   * Create the four default company brands for an org (idempotent — skips any
+   * that already exist by name). Fixes the pipeline↔Brands mismatch: the
+   * pipeline's companies become real, RAG-capable brand records.
+   */
+  async seedDefaults(orgId: string) {
+    const defaults = [
+      { company_name: 'Neuraforz', industry: 'AI / LLM' },
+      { company_name: 'Exzelon', industry: 'AI / SaaS' },
+      { company_name: 'Medeoan', industry: 'Healthcare Tech' },
+      { company_name: 'Tavakkul', industry: 'Social Impact' },
+    ];
+    return withTenant(db, orgId, async (tx) => {
+      const existing = await tx.select({ name: brands.companyName }).from(brands);
+      const have = new Set(existing.map((b) => b.name.toLowerCase()));
+      const toCreate = defaults.filter((d) => !have.has(d.company_name.toLowerCase()));
+      if (!toCreate.length) return { seeded: 0, brands: [] };
+      const rows = await tx
+        .insert(brands)
+        .values(
+          toCreate.map((d) => ({
+            orgId,
+            companyName: d.company_name,
+            industry: d.industry,
+            status: 'active',
+          })),
+        )
+        .returning();
+      return { seeded: rows.length, brands: rows.map((r) => brandToDto(r)) };
+    });
+  },
 };
 
 export type BrandsService = typeof brandsService;

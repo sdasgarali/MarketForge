@@ -3,8 +3,9 @@
  * monitor, kicks off Pipeline 1 (Auto button), and force-stops everything
  * (kill switch + pause + obliterate all queues).
  */
-import { eq } from 'drizzle-orm';
-import { brands, db, organizations, withTenant } from '@marketforge/db';
+import { desc, eq } from 'drizzle-orm';
+import { brands, db, notifications, organizations, withTenant } from '@marketforge/db';
+import { getOrgLlm, orgHasLlm } from '../../lib/org-llm.js';
 import {
   JOB_NAMES,
   type JobName,
@@ -86,6 +87,11 @@ export const pipelinesService = {
     const kill = await killSwitchStatus();
     const snap = await queueSnapshot();
     const selected = await readStepProviders(orgId);
+    // Real brands for this org (the pipeline used to show hardcoded companies).
+    const brandRows = await withTenant(db, orgId, (tx) =>
+      tx.select({ name: brands.companyName }).from(brands),
+    );
+    const companies = brandRows.map((b) => b.name);
 
     const pipelines = PIPELINES.map((p) => ({
       id: p.id,
@@ -134,7 +140,7 @@ export const pipelinesService = {
 
     return {
       kill_switch: kill,
-      companies: COMPANIES,
+      companies,
       platforms: PLATFORMS,
       queues: snap,
       pipelines,
@@ -201,6 +207,60 @@ export const pipelinesService = {
       }
     }
     return { shutdown: true, queues_stopped: stopped.length, jobs_removed: removed };
+  },
+
+  /**
+   * "Brain" supervisor: reads recent pipeline failures and, if an AI provider is
+   * configured, produces a diagnosis + recommended actions. This is the
+   * oversight layer — it explains what's breaking and how to fix it.
+   */
+  async supervisor(orgId: string) {
+    const failures = await withTenant(db, orgId, (tx) =>
+      tx
+        .select({
+          title: notifications.title,
+          body: notifications.body,
+          createdAt: notifications.createdAt,
+        })
+        .from(notifications)
+        .where(eq(notifications.type, 'failure'))
+        .orderBy(desc(notifications.createdAt))
+        .limit(20),
+    );
+
+    const recent = failures.map((f) => ({
+      title: f.title ?? '',
+      body: f.body ?? '',
+      at: f.createdAt.toISOString(),
+    }));
+
+    let diagnosis: string | null = null;
+    let can_diagnose = false;
+    if (recent.length > 0 && (await orgHasLlm(orgId))) {
+      can_diagnose = true;
+      try {
+        const llm = await getOrgLlm(orgId);
+        const res = await llm.generateText({
+          task: 'reasoning',
+          system:
+            'You are the supervisor AI for a marketing automation pipeline. Given recent failures, give a short diagnosis of the likely root cause(s) and a numbered list of concrete fixes. Be terse and actionable.',
+          prompt: `Recent pipeline failures (newest first):\n${recent
+            .map((f, i) => `${i + 1}. ${f.title} — ${f.body}`)
+            .join('\n')}`,
+        });
+        diagnosis = res.text.trim();
+      } catch (err) {
+        diagnosis = `Diagnosis unavailable: ${err instanceof Error ? err.message : 'AI error'}`;
+      }
+    }
+
+    return {
+      healthy: recent.length === 0,
+      failure_count: recent.length,
+      recent_failures: recent.slice(0, 8),
+      can_diagnose,
+      diagnosis,
+    };
   },
 
   /** Re-enable processing after a shutdown (clear kill switch + resume). */

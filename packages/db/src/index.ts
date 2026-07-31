@@ -21,7 +21,7 @@ import type {
   users,
   orgMemberships,
 } from './schema/tenancy.js';
-import type { brands, socialAccounts } from './schema/brands.js';
+import type { brandKnowledge, brands, socialAccounts } from './schema/brands.js';
 import type {
   campaigns,
   contentItems,
@@ -64,6 +64,8 @@ export type UserInsert = typeof users.$inferInsert;
 export type OrgMembershipInsert = typeof orgMemberships.$inferInsert;
 export type BrandInsert = typeof brands.$inferInsert;
 export type SocialAccountInsert = typeof socialAccounts.$inferInsert;
+export type BrandKnowledgeRow = typeof brandKnowledge.$inferSelect;
+export type BrandKnowledgeInsert = typeof brandKnowledge.$inferInsert;
 export type CampaignInsert = typeof campaigns.$inferInsert;
 export type ContentItemInsert = typeof contentItems.$inferInsert;
 export type AssetInsert = typeof assets.$inferInsert;

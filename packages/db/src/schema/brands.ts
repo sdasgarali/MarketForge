@@ -81,3 +81,29 @@ export const socialAccounts = pgTable(
     index('social_accounts_brand_id_idx').on(t.brandId),
   ],
 );
+
+/**
+ * Per-brand knowledge base (RAG). Documents an AI or the operator adds about a
+ * brand; retrieved at generation time so content stays on-brand and current.
+ * Tenant-scoped by RLS.
+ */
+export const brandKnowledge = pgTable(
+  'brand_knowledge',
+  {
+    id: pk(),
+    orgId: orgId().references(() => organizations.id, { onDelete: 'cascade' }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    source: text('source').notNull().default('user'),
+    metadata: jsonb('metadata'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('brand_knowledge_org_id_idx').on(t.orgId),
+    index('brand_knowledge_brand_id_idx').on(t.brandId),
+  ],
+);
