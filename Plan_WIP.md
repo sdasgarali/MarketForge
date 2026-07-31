@@ -155,6 +155,18 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
 - Legacy note: founder@marketforge.app + earlier Mongo users stay on the seed org (orgId unchanged);
   new signups get fresh orgs. Multi-org-per-user switching = future (/auth re-issue after membership check).
 
+## Clickable pipeline tiles → per-step AI provider + key (2026-08-01) ✅ LIVE + TESTED
+- Each step tile is clickable → StepConfigDialog: pick which provider powers it (eligible set by
+  capability — text: anthropic/openai/gemini/groq/openrouter; image: fal; video: higgsfield/fal;
+  storage: google_drive/s3) + save that provider API key inline (reuses /integrations, encrypted).
+- api: GET /pipelines steps carry provider_options + selected_provider; PUT /pipelines/steps/:id/provider
+  persists choice in organizations.settings.pipelineStepProviders (validated). Added Higgsfield provider.
+- web: clickable StepNode shows chosen "AI: X"; dialog = provider picker + inline key form.
+- VERIFIED browser (as tenant Carol): clicked AI 1 tile → picked OpenAI → saved key → Use provider →
+  tile shows "AI: OpenAI" (persists across the 3s poll). Deployed (VPS api + Vercel web).
+- NEXT: the per-step provider + key are stored; wiring the WORKER to actually build adapters from the
+  chosen provider's key at generation time is the remaining piece (Slice 4 / makes steps go live).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
