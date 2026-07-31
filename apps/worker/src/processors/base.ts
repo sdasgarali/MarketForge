@@ -8,12 +8,14 @@
  * The queue package already validates the payload against its Zod schema before
  * the handler runs, so handlers receive canonical, defaulted input.
  */
+import { runWithAdapters } from '@marketforge/adapters';
 import { type Job, isKillSwitchEngaged } from '@marketforge/queue';
 import type { JobName, PayloadFor } from '@marketforge/contracts';
 import { createLogger, type Logger } from '@marketforge/logger';
 import { SERVICE } from '../lib/constants.js';
 import { isTerminalError, TerminalError, toError } from '../lib/errors.js';
 import { routeToDlq } from '../lib/failure.js';
+import { getOrgAdapters } from '../lib/org-adapters.js';
 
 export interface ProcessorCtx<N extends JobName> {
   job: Job<PayloadFor<N>>;
@@ -42,6 +44,13 @@ export function defineProcessor<N extends JobName>(name: N, handler: Handler<N>)
       // the pipelines. Terminal → the job is DLQ'd, not retried.
       if (await isKillSwitchEngaged()) {
         throw new TerminalError('kill switch engaged — pipeline force-stopped');
+      }
+      // Run the handler with the ORG's adapters (built from its saved provider
+      // keys), so every `adapters.*` call uses the tenant's own keys.
+      const orgId = (payload as { org_id?: string }).org_id;
+      if (orgId) {
+        const orgAdapters = await getOrgAdapters(orgId);
+        return await runWithAdapters(orgAdapters, () => handler({ job, payload, log }));
       }
       return await handler({ job, payload, log });
     } catch (err) {

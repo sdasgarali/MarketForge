@@ -15,6 +15,7 @@
  *   - storage:   S3StorageAdapter if S3 fully configured, else
  *                LocalDiskStorageAdapter under DATA_DIR (dev default).
  */
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createLogger } from '@marketforge/logger';
 import { env as realEnv } from '@marketforge/config';
 
@@ -204,7 +205,29 @@ export function createAdapters(env: AdapterEnv): Adapters {
 }
 
 /**
- * Default, ready-to-use adapter singleton built from the real config env.
- * Import this in apps; import `createAdapters` when you need a custom/test env.
+ * Default adapter bundle built from the process env (keys from the deployment).
  */
-export const adapters: Adapters = createAdapters(realEnv as unknown as AdapterEnv);
+const defaultAdapters: Adapters = createAdapters(realEnv as unknown as AdapterEnv);
+
+/**
+ * Per-request adapter override. The worker builds a PER-ORG adapter bundle from
+ * that org's saved provider keys and runs each job inside `runWithAdapters`, so
+ * every `adapters.*` call (in processors and agents) transparently uses the
+ * org's own keys — no plumbing through every call site.
+ */
+const adapterContext = new AsyncLocalStorage<Adapters>();
+
+export function runWithAdapters<T>(bundle: Adapters, fn: () => T): T {
+  return adapterContext.run(bundle, fn);
+}
+
+/**
+ * The adapter bundle to use. Proxies to the org-scoped bundle when one is active
+ * (inside `runWithAdapters`), else the default env-built singleton.
+ */
+export const adapters: Adapters = new Proxy(defaultAdapters, {
+  get(target, prop: string) {
+    const active = adapterContext.getStore() ?? target;
+    return active[prop as keyof Adapters];
+  },
+}) as Adapters;

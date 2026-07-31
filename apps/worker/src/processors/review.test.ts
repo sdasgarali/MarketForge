@@ -19,6 +19,7 @@ let fake: FakeState;
 
 vi.mock('@marketforge/queue', () => ({
   enqueueGenerateText: (payload: Record<string, unknown>) => enqueueGenerateText(payload),
+  isKillSwitchEngaged: async () => false,
 }));
 
 // Mock the adapters LLM so reviewer stages return a controllable score.
@@ -32,6 +33,9 @@ vi.mock('@marketforge/adapters', () => ({
       })),
     },
   },
+  // Per-org adapter override runs the fn with the (mocked) default adapters.
+  runWithAdapters: (_bundle: unknown, fn: () => unknown) => fn(),
+  createAdapters: () => ({}),
 }));
 
 // Mock @marketforge/db: withTenant just runs the callback with a fake tx; the
@@ -57,6 +61,7 @@ vi.mock('@marketforge/db', () => {
     auditLogs: {},
     promptTemplates: {},
     assets: {},
+    apiCredentials: {},
   };
 });
 

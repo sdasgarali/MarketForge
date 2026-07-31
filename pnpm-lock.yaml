@@ -262,6 +262,9 @@ importers:
       '@marketforge/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      '@marketforge/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       bullmq:
         specifier: ^5.34.5
         version: 5.81.3

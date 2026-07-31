@@ -16,7 +16,7 @@ export * from './interfaces/index.js';
 
 // Factory / registry.
 export type { Adapters, AdapterEnv } from './factory.js';
-export { createAdapters, adapters } from './factory.js';
+export { createAdapters, adapters, runWithAdapters } from './factory.js';
 
 // Errors.
 export { NotImplementedError, AdapterError } from './errors.js';
