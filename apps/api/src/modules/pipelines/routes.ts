@@ -3,10 +3,12 @@
  * admin-only (they mutate live processing). Force-shutdown is audited.
  */
 import { Router } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '../../lib/async-handler.js';
 import { getCtx } from '../../lib/context.js';
 import { requireMinRole } from '../../middleware/rbac.js';
 import { writeAudit } from '../../lib/audit.js';
+import { parseOrThrow } from '../../lib/validate.js';
 import { pipelinesService } from './service.js';
 
 export const pipelinesRouter: Router = Router();
@@ -14,8 +16,28 @@ export const pipelinesRouter: Router = Router();
 pipelinesRouter.get(
   '/',
   requireMinRole('viewer'),
-  asyncHandler(async (_req, res) => {
-    res.json(await pipelinesService.status());
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    res.json(await pipelinesService.status(ctx.orgId));
+  }),
+);
+
+const SetProviderInput = z.object({ provider: z.string().min(1) });
+
+pipelinesRouter.put(
+  '/steps/:stepId/provider',
+  requireMinRole('admin'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    const stepId = req.params.stepId as string;
+    const { provider } = parseOrThrow(SetProviderInput, req.body);
+    const result = await pipelinesService.setStepProvider(ctx.orgId, stepId, provider);
+    await writeAudit(
+      ctx,
+      { action: 'pipelines.set_step_provider', entityType: 'pipeline', entityId: stepId },
+      req,
+    );
+    res.json(result);
   }),
 );
 

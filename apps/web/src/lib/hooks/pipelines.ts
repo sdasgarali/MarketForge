@@ -6,6 +6,11 @@ import { apiFetch } from '../api-client';
 
 export type StepStatus = 'idle' | 'queued' | 'running' | 'error' | 'stopped';
 
+export interface ProviderOption {
+  id: string;
+  name: string;
+}
+
 export interface StepView {
   id: string;
   label: string;
@@ -14,6 +19,8 @@ export interface StepView {
   note: string | null;
   status: StepStatus;
   counts: Record<string, number> | null;
+  provider_options: ProviderOption[];
+  selected_provider: string | null;
 }
 
 export interface PipelineView {
@@ -73,4 +80,21 @@ export function useShutdownPipelines() {
 
 export function useResumePipelines() {
   return usePipelineAction('resume', () => 'Pipelines re-enabled');
+}
+
+export function useSetStepProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { stepId: string; provider: string }) =>
+      apiFetch<{ step_id: string; provider: string }>(
+        `/pipelines/steps/${input.stepId}/provider`,
+        { method: 'PUT', body: { provider: input.provider } },
+      ),
+    onSuccess: () => {
+      toast.success('Step provider updated');
+      void qc.invalidateQueries({ queryKey: KEY });
+    },
+    onError: (err: unknown) =>
+      toast.error(err instanceof Error ? err.message : 'Failed to set provider'),
+  });
 }

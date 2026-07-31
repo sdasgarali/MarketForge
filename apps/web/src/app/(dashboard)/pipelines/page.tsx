@@ -19,6 +19,7 @@ import {
 } from '@/lib/hooks/pipelines';
 import { PageHeader } from '@/components/common/page-header';
 import { FadeIn } from '@/components/common/motion';
+import { StepConfigDialog } from '@/components/pipelines/step-config-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,16 +37,28 @@ const STATUS_STYLES: Record<StepStatus, { dot: string; ring: string; label: stri
   stopped: { dot: 'bg-destructive', ring: 'border-destructive/60', label: 'Stopped' },
 };
 
-function StepNode({ step }: { step: StepView }) {
+function StepNode({
+  step,
+  onSelect,
+}: {
+  step: StepView;
+  onSelect: (s: StepView) => void;
+}) {
   const s = STATUS_STYLES[step.status];
   const active = step.counts?.active ?? 0;
   const waiting = (step.counts?.waiting ?? 0) + (step.counts?.delayed ?? 0);
   const failed = step.counts?.failed ?? 0;
+  const configurable = step.provider_options.length > 0;
+  const selected = step.provider_options.find((o) => o.id === step.selected_provider);
+
   return (
-    <div
-      className={`min-w-[150px] max-w-[180px] shrink-0 rounded-lg border bg-card p-3 ${s.ring} ${
+    <button
+      type="button"
+      disabled={!configurable}
+      onClick={() => configurable && onSelect(step)}
+      className={`min-w-[150px] max-w-[190px] shrink-0 rounded-lg border bg-card p-3 text-left transition ${s.ring} ${
         step.decision ? 'border-dashed' : ''
-      }`}
+      } ${configurable ? 'cursor-pointer hover:border-primary/60 hover:shadow-sm' : 'cursor-default'}`}
     >
       <div className="flex items-center gap-2">
         <span className={`h-2.5 w-2.5 rounded-full ${s.dot}`} />
@@ -58,14 +71,25 @@ function StepNode({ step }: { step: StepView }) {
         <p className="mt-1 text-xs text-muted-foreground">{step.note}</p>
       ) : null}
       {step.queue ? (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap items-center gap-1">
           {active > 0 ? <Badge variant="secondary">{active} active</Badge> : null}
           {waiting > 0 ? <Badge variant="outline">{waiting} queued</Badge> : null}
           {failed > 0 ? <Badge variant="destructive">{failed} failed</Badge> : null}
           <span className="font-mono text-[10px] text-muted-foreground">{step.queue}</span>
         </div>
       ) : null}
-    </div>
+      {configurable ? (
+        <div className="mt-2 border-t border-border pt-2">
+          {selected ? (
+            <Badge variant="secondary" className="text-[10px]">
+              AI: {selected.name}
+            </Badge>
+          ) : (
+            <span className="text-[10px] text-primary">Click to choose AI + key</span>
+          )}
+        </div>
+      ) : null}
+    </button>
   );
 }
 
@@ -74,6 +98,13 @@ export default function PipelinesPage() {
   const start = useStartPipelines();
   const shutdown = useShutdownPipelines();
   const resume = useResumePipelines();
+
+  const [activeStep, setActiveStep] = React.useState<StepView | null>(null);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  function openStep(step: StepView) {
+    setActiveStep(step);
+    setDialogOpen(true);
+  }
 
   const killed = data?.kill_switch.engaged ?? false;
   const busy = start.isPending || shutdown.isPending || resume.isPending;
@@ -171,7 +202,7 @@ export default function PipelinesPage() {
                 <div className="flex items-stretch gap-2 overflow-x-auto pb-2">
                   {p.steps.map((step, i) => (
                     <React.Fragment key={step.id}>
-                      <StepNode step={step} />
+                      <StepNode step={step} onSelect={openStep} />
                       {i < p.steps.length - 1 ? (
                         <div className="flex shrink-0 items-center text-muted-foreground">
                           <ChevronRight className="h-5 w-5" />
@@ -207,6 +238,12 @@ export default function PipelinesPage() {
           <Badge variant="muted">+ future</Badge>
         </div>
       ) : null}
+
+      <StepConfigDialog
+        step={activeStep}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }

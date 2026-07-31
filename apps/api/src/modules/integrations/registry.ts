@@ -7,6 +7,7 @@
 export type IntegrationCategory =
   | 'ai_text'
   | 'ai_image'
+  | 'ai_video'
   | 'ai_voice'
   | 'publishing'
   | 'storage';
@@ -77,6 +78,13 @@ export const INTEGRATIONS: IntegrationProvider[] = [
     category: 'ai_image',
     description: 'Image + short-form video generation (Ideogram, Flux, Kling).',
     fields: [apiKeyField('fal_…')],
+  },
+  {
+    id: 'higgsfield',
+    name: 'Higgsfield',
+    category: 'ai_video',
+    description: 'Character video generation ("see-dance").',
+    fields: [apiKeyField('…')],
   },
   {
     id: 'elevenlabs',

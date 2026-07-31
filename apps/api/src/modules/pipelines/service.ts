@@ -3,6 +3,8 @@
  * monitor, kicks off Pipeline 1 (Auto button), and force-stops everything
  * (kill switch + pause + obliterate all queues).
  */
+import { eq } from 'drizzle-orm';
+import { db, organizations } from '@marketforge/db';
 import {
   JOB_NAMES,
   type JobName,
@@ -12,7 +14,28 @@ import {
   getQueue,
   killSwitchStatus,
 } from '@marketforge/queue';
-import { COMPANIES, PIPELINES, PIPELINE_QUEUES } from './definitions.js';
+import { BadRequestError, NotFoundError } from '../../http/errors.js';
+import { getProvider } from '../integrations/registry.js';
+import {
+  COMPANIES,
+  PIPELINES,
+  PIPELINE_QUEUES,
+  STEP_PROVIDER_OPTIONS,
+  providerOptionsForStep,
+} from './definitions.js';
+
+interface OrgSettings {
+  pipelineStepProviders?: Record<string, string>;
+}
+
+async function readStepProviders(orgId: string): Promise<Record<string, string>> {
+  const [row] = await db
+    .select({ settings: organizations.settings })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  return (row?.settings as OrgSettings | null)?.pipelineStepProviders ?? {};
+}
 
 type Counts = Record<string, number> & { paused?: number };
 type StepStatus = 'idle' | 'queued' | 'running' | 'error' | 'stopped';
@@ -45,28 +68,37 @@ function deriveStatus(counts: Counts | undefined, killed: boolean): StepStatus {
 }
 
 export const pipelinesService = {
-  async status() {
+  async status(orgId: string) {
     const kill = await killSwitchStatus();
     const snap = await queueSnapshot();
+    const selected = await readStepProviders(orgId);
 
     const pipelines = PIPELINES.map((p) => ({
       id: p.id,
       name: p.name,
       trigger: p.trigger ?? null,
       branches: p.branches ?? [],
-      steps: p.steps.map((s) => ({
-        id: s.id,
-        label: s.label,
-        queue: s.queue ?? null,
-        decision: s.decision ?? false,
-        note: s.note ?? null,
-        status: s.queue
-          ? deriveStatus(snap[s.queue], kill.engaged)
-          : kill.engaged
-            ? 'stopped'
-            : 'idle',
-        counts: s.queue ? (snap[s.queue] ?? null) : null,
-      })),
+      steps: p.steps.map((s) => {
+        const options = providerOptionsForStep(s).map((id) => ({
+          id,
+          name: getProvider(id)?.name ?? id,
+        }));
+        return {
+          id: s.id,
+          label: s.label,
+          queue: s.queue ?? null,
+          decision: s.decision ?? false,
+          note: s.note ?? null,
+          status: s.queue
+            ? deriveStatus(snap[s.queue], kill.engaged)
+            : kill.engaged
+              ? 'stopped'
+              : 'idle',
+          counts: s.queue ? (snap[s.queue] ?? null) : null,
+          provider_options: options,
+          selected_provider: selected[s.id] ?? null,
+        };
+      }),
     }));
 
     const totals = Object.values(snap).reduce<{
@@ -130,5 +162,34 @@ export const pipelinesService = {
     await clearKillSwitch();
     await Promise.allSettled(JOB_NAMES.map((n) => getQueue(n).resume()));
     return { resumed: true };
+  },
+
+  /** Assign which provider powers a given step (stored in org settings). */
+  async setStepProvider(orgId: string, stepId: string, provider: string) {
+    const options = STEP_PROVIDER_OPTIONS[stepId];
+    if (!options) throw new NotFoundError(`Unknown pipeline step: ${stepId}`);
+    if (!options.includes(provider)) {
+      throw new BadRequestError(
+        `Provider "${provider}" is not valid for step "${stepId}"`,
+      );
+    }
+    const [row] = await db
+      .select({ settings: organizations.settings })
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+    const existing = (row?.settings as OrgSettings | null) ?? {};
+    const settings: OrgSettings = {
+      ...existing,
+      pipelineStepProviders: {
+        ...(existing.pipelineStepProviders ?? {}),
+        [stepId]: provider,
+      },
+    };
+    await db
+      .update(organizations)
+      .set({ settings, updatedAt: new Date() })
+      .where(eq(organizations.id, orgId));
+    return { step_id: stepId, provider };
   },
 };

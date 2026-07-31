@@ -75,3 +75,25 @@ export const PIPELINE_QUEUES: JobName[] = Array.from(
     PIPELINES.flatMap((p) => p.steps.map((s) => s.queue).filter((q): q is JobName => !!q)),
   ),
 );
+
+/**
+ * Which provider integrations are eligible to power each step, keyed by the
+ * step's queue (its capability). Clicking a tile lets the operator pick one of
+ * these and save its API key. Ids match the integrations registry.
+ */
+const PROVIDERS_BY_QUEUE: Partial<Record<JobName, string[]>> = {
+  research: ['anthropic', 'openai', 'gemini', 'groq', 'openrouter'],
+  'generate-text': ['anthropic', 'openai', 'gemini', 'groq', 'openrouter'],
+  'generate-image': ['fal'],
+  'generate-video': ['higgsfield', 'fal'],
+  'drive-mirror': ['google_drive', 's3'],
+};
+
+export function providerOptionsForStep(step: PipelineStep): string[] {
+  return step.queue ? (PROVIDERS_BY_QUEUE[step.queue] ?? []) : [];
+}
+
+/** Flat list of every step id → its eligible providers (for validation). */
+export const STEP_PROVIDER_OPTIONS: Record<string, string[]> = Object.fromEntries(
+  PIPELINES.flatMap((p) => p.steps.map((s) => [s.id, providerOptionsForStep(s)] as const)),
+);
