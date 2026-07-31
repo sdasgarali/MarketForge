@@ -24,10 +24,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { PageHeader } from '@/components/common/page-header';
 import { FadeIn } from '@/components/common/motion';
+import { IntegrationsPanel } from '@/components/settings/integrations-panel';
 import { useMe, usePromptTemplates } from '@/lib/hooks';
 
 const MASKED_KEY = 'mf_live_sk_••••••••••••••••••••••••7f2a';
@@ -201,30 +200,12 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle>Integrations</CardTitle>
                 <CardDescription>
-                  Connect the services that power research, publishing, and
-                  storage.
+                  Connect the AI, publishing, and storage providers that power
+                  research, generation, and publishing.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="divide-y divide-border">
-                {[
-                  { name: 'Ayrshare', desc: 'Social publishing aggregator', on: true },
-                  { name: 'S3 storage', desc: 'Asset system of record', on: true },
-                  { name: 'Google Drive', desc: 'Per-brand asset mirror', on: false },
-                  { name: 'n8n', desc: 'Automation engine (queue mode)', on: true },
-                  { name: 'Slack', desc: 'Approval & failure alerts', on: false },
-                ].map((i, idx) => (
-                  <div
-                    key={i.name}
-                    className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{i.name}</p>
-                      <p className="text-xs text-muted-foreground">{i.desc}</p>
-                    </div>
-                    <Switch defaultChecked={i.on} aria-label={`Toggle ${i.name}`} />
-                    {idx === -1 ? <Separator /> : null}
-                  </div>
-                ))}
+              <CardContent>
+                <IntegrationsPanel />
               </CardContent>
             </Card>
           </FadeIn>
