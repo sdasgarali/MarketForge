@@ -73,6 +73,13 @@ export const INTEGRATIONS: IntegrationProvider[] = [
     fields: [apiKeyField('sk-or-…')],
   },
   {
+    id: 'nvidia',
+    name: 'NVIDIA NIM (free)',
+    category: 'ai_text',
+    description: 'build.nvidia.com — free API for testing (Llama, Nemotron, DeepSeek).',
+    fields: [apiKeyField('nvapi-…')],
+  },
+  {
     id: 'fal',
     name: 'fal.ai',
     category: 'ai_image',

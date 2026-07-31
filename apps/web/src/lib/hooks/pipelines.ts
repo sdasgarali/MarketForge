@@ -9,6 +9,7 @@ export type StepStatus = 'idle' | 'queued' | 'running' | 'error' | 'stopped';
 export interface ProviderOption {
   id: string;
   name: string;
+  models: string[];
 }
 
 export interface StepView {
@@ -21,6 +22,7 @@ export interface StepView {
   counts: Record<string, number> | null;
   provider_options: ProviderOption[];
   selected_provider: string | null;
+  selected_model: string | null;
 }
 
 export interface PipelineView {
@@ -116,10 +118,13 @@ export function useResumePipelines() {
 export function useSetStepProvider() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { stepId: string; provider: string }) =>
-      apiFetch<{ step_id: string; provider: string }>(
+    mutationFn: (input: { stepId: string; provider: string; model?: string }) =>
+      apiFetch<{ step_id: string; provider: string; model: string | null }>(
         `/pipelines/steps/${input.stepId}/provider`,
-        { method: 'PUT', body: { provider: input.provider } },
+        {
+          method: 'PUT',
+          body: { provider: input.provider, ...(input.model ? { model: input.model } : {}) },
+        },
       ),
     onSuccess: () => {
       toast.success('Step provider updated');

@@ -81,8 +81,11 @@ function StepNode({
       {configurable ? (
         <div className="mt-2 border-t border-border pt-2">
           {selected ? (
-            <Badge variant="secondary" className="text-[10px]">
-              AI: {selected.name}
+            <Badge variant="secondary" className="max-w-full text-[10px]">
+              <span className="truncate">
+                AI: {selected.name}
+                {step.selected_model ? ` · ${step.selected_model}` : ''}
+              </span>
             </Badge>
           ) : (
             <span className="text-[10px] text-primary">Click to choose AI + key</span>

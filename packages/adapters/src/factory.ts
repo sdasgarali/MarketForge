@@ -39,6 +39,7 @@ import { GeminiLlmAdapter } from './impl/llm/gemini.js';
 import { GroqLlmAdapter } from './impl/llm/groq.js';
 import { OpenRouterLlmAdapter } from './impl/llm/openrouter.js';
 import { RoutingLlmAdapter, type RoutingProviders } from './impl/llm/routing.js';
+import { NVIDIA_BASE_URL, NVIDIA_MODELS } from './impl/llm/models.js';
 import { FalImageAdapter } from './impl/image/fal-image.js';
 import { FalVideoAdapter } from './impl/video/fal-video.js';
 import { ElevenLabsVoiceAdapter } from './impl/voice/elevenlabs.js';
@@ -67,6 +68,7 @@ export interface AdapterEnv {
   GEMINI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
+  NVIDIA_API_KEY?: string;
   FAL_API_KEY?: string;
   ELEVENLABS_API_KEY?: string;
   AYRSHARE_API_KEY?: string;
@@ -97,6 +99,13 @@ function buildLlm(env: AdapterEnv, log: Log): LlmAdapter {
     if (env.GROQ_API_KEY) providers.groq = new GroqLlmAdapter({ apiKey: env.GROQ_API_KEY });
     if (env.OPENROUTER_API_KEY)
       providers.openrouter = new OpenRouterLlmAdapter({ apiKey: env.OPENROUTER_API_KEY });
+    if (env.NVIDIA_API_KEY)
+      providers.nvidia = new OpenAiLlmAdapter({
+        apiKey: env.NVIDIA_API_KEY,
+        baseURL: NVIDIA_BASE_URL,
+        defaultModel: NVIDIA_MODELS.default,
+        providerName: 'nvidia',
+      });
 
     if (Object.keys(providers).length > 0) return new RoutingLlmAdapter(providers);
   } catch (err) {

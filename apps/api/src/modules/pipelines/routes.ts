@@ -22,7 +22,10 @@ pipelinesRouter.get(
   }),
 );
 
-const SetProviderInput = z.object({ provider: z.string().min(1) });
+const SetProviderInput = z.object({
+  provider: z.string().min(1),
+  model: z.string().optional(),
+});
 
 pipelinesRouter.put(
   '/steps/:stepId/provider',
@@ -30,8 +33,8 @@ pipelinesRouter.put(
   asyncHandler(async (req, res) => {
     const ctx = getCtx(req);
     const stepId = req.params.stepId as string;
-    const { provider } = parseOrThrow(SetProviderInput, req.body);
-    const result = await pipelinesService.setStepProvider(ctx.orgId, stepId, provider);
+    const { provider, model } = parseOrThrow(SetProviderInput, req.body);
+    const result = await pipelinesService.setStepProvider(ctx.orgId, stepId, provider, model);
     await writeAudit(
       ctx,
       { action: 'pipelines.set_step_provider', entityType: 'pipeline', entityId: stepId },

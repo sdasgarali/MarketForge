@@ -30,6 +30,7 @@ const PROVIDER_TO_ENV: Record<string, (v: Vals) => Partial<AdapterEnv>> = {
   gemini: (v) => ({ GEMINI_API_KEY: v.apiKey }),
   groq: (v) => ({ GROQ_API_KEY: v.apiKey }),
   openrouter: (v) => ({ OPENROUTER_API_KEY: v.apiKey }),
+  nvidia: (v) => ({ NVIDIA_API_KEY: v.apiKey }),
   fal: (v) => ({ FAL_API_KEY: v.apiKey }),
   elevenlabs: (v) => ({ ELEVENLABS_API_KEY: v.apiKey }),
   ayrshare: (v) => ({ AYRSHARE_API_KEY: v.apiKey }),

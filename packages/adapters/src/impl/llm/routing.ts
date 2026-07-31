@@ -28,6 +28,13 @@ export function providerForModelHint(hint: string): ProviderKey | undefined {
   if (h.startsWith('gpt') || h.startsWith('o1') || h.startsWith('o3') || h.startsWith('openai'))
     return 'openai';
   if (h.startsWith('gemini') || h.startsWith('google')) return 'gemini';
+  if (
+    h.startsWith('nvidia/') ||
+    h.startsWith('meta/') ||
+    h.startsWith('deepseek-ai/') ||
+    h.includes('nemotron')
+  )
+    return 'nvidia';
   if (h.startsWith('llama') || h.startsWith('groq') || h.includes('groq')) return 'groq';
   if (h.startsWith('openrouter') || h.includes('/')) return 'openrouter';
   return undefined;
@@ -63,6 +70,7 @@ export interface RoutingProviders {
   gemini?: LlmAdapter;
   groq?: LlmAdapter;
   openrouter?: LlmAdapter;
+  nvidia?: LlmAdapter;
 }
 
 export class RoutingLlmAdapter implements LlmAdapter {

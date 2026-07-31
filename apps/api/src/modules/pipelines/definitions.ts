@@ -130,15 +130,37 @@ export const PIPELINE_QUEUES: JobName[] = Array.from(
  * these and save its API key. Ids match the integrations registry.
  */
 const PROVIDERS_BY_QUEUE: Partial<Record<JobName, string[]>> = {
-  research: ['anthropic', 'openai', 'gemini', 'groq', 'openrouter'],
-  'generate-text': ['anthropic', 'openai', 'gemini', 'groq', 'openrouter'],
+  research: ['anthropic', 'openai', 'gemini', 'groq', 'openrouter', 'nvidia'],
+  'generate-text': ['anthropic', 'openai', 'gemini', 'groq', 'openrouter', 'nvidia'],
   'generate-image': ['fal'],
   'generate-video': ['higgsfield', 'fal'],
   'drive-mirror': ['google_drive', 's3'],
 };
 
+/** Selectable models per provider (for the per-step model dropdown). */
+export const MODELS_BY_PROVIDER: Record<string, string[]> = {
+  anthropic: ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+  openai: ['gpt-5', 'gpt-5-mini'],
+  gemini: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+  groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
+  openrouter: ['openrouter/auto'],
+  nvidia: [
+    'meta/llama-3.3-70b-instruct',
+    'nvidia/llama-3.1-nemotron-70b-instruct',
+    'deepseek-ai/deepseek-r1',
+  ],
+  fal: ['ideogram', 'flux', 'seedream'],
+  higgsfield: ['see-dance-2.0'],
+  google_drive: [],
+  s3: [],
+};
+
 export function providerOptionsForStep(step: PipelineStep): string[] {
   return step.queue ? (PROVIDERS_BY_QUEUE[step.queue] ?? []) : [];
+}
+
+export function modelsForProvider(providerId: string): string[] {
+  return MODELS_BY_PROVIDER[providerId] ?? [];
 }
 
 /** Flat list of every step id → its eligible providers (for validation). */

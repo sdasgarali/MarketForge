@@ -55,7 +55,9 @@ describe('providerForModelHint', () => {
     expect(providerForModelHint('gpt-5')).toBe('openai');
     expect(providerForModelHint('gemini-2.5-flash-lite')).toBe('gemini');
     expect(providerForModelHint('llama-3.3-70b-versatile')).toBe('groq');
-    expect(providerForModelHint('meta/llama-x')).toBe('openrouter');
+    expect(providerForModelHint('meta/llama-3.3-70b-instruct')).toBe('nvidia');
+    expect(providerForModelHint('deepseek-ai/deepseek-r1')).toBe('nvidia');
+    expect(providerForModelHint('some-vendor/model-x')).toBe('openrouter');
     expect(providerForModelHint('something-unknown')).toBeUndefined();
   });
 });

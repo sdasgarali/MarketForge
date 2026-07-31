@@ -16,14 +16,21 @@ export interface OpenAiAdapterOptions {
   baseURL?: string;
   timeoutMs?: number;
   maxRetries?: number;
+  /** Default model when no hint (used for OpenAI-compatible providers e.g. NVIDIA). */
+  defaultModel?: string;
+  /** Adapter/provider name override (e.g. 'nvidia'). */
+  providerName?: string;
 }
 
 export class OpenAiLlmAdapter implements LlmAdapter {
-  readonly name = 'openai';
+  readonly name: string;
   private readonly client: OpenAI;
+  private readonly defaultModel: string;
 
   constructor(opts: OpenAiAdapterOptions) {
-    if (!opts.apiKey) throw new AdapterError('OPENAI_API_KEY missing', this.name);
+    this.name = opts.providerName ?? 'openai';
+    if (!opts.apiKey) throw new AdapterError(`${this.name} apiKey missing`, this.name);
+    this.defaultModel = opts.defaultModel ?? OPENAI_MODELS.default;
     this.client = new OpenAI({
       apiKey: opts.apiKey,
       ...(opts.baseURL ? { baseURL: opts.baseURL } : {}),
@@ -33,7 +40,7 @@ export class OpenAiLlmAdapter implements LlmAdapter {
   }
 
   async generateText(opts: LlmGenerateOptions): Promise<GeneratedText> {
-    const model = opts.modelHint ?? OPENAI_MODELS.default;
+    const model = opts.modelHint ?? this.defaultModel;
     const started = Date.now();
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];

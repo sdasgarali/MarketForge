@@ -24,20 +24,31 @@ import {
   type PlatformId,
   STEP_PROVIDER_OPTIONS,
   buildRunPlan,
+  modelsForProvider,
   providerOptionsForStep,
 } from './definitions.js';
 
+export interface StepChoice {
+  provider: string;
+  model?: string;
+}
 interface OrgSettings {
-  pipelineStepProviders?: Record<string, string>;
+  // Legacy runs stored a bare provider string; new runs store {provider, model}.
+  pipelineStepProviders?: Record<string, StepChoice | string>;
 }
 
-async function readStepProviders(orgId: string): Promise<Record<string, string>> {
+async function readStepProviders(orgId: string): Promise<Record<string, StepChoice>> {
   const [row] = await db
     .select({ settings: organizations.settings })
     .from(organizations)
     .where(eq(organizations.id, orgId))
     .limit(1);
-  return (row?.settings as OrgSettings | null)?.pipelineStepProviders ?? {};
+  const raw = (row?.settings as OrgSettings | null)?.pipelineStepProviders ?? {};
+  const out: Record<string, StepChoice> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    out[k] = typeof v === 'string' ? { provider: v } : v;
+  }
+  return out;
 }
 
 type Counts = Record<string, number> & { paused?: number };
@@ -85,6 +96,7 @@ export const pipelinesService = {
         const options = providerOptionsForStep(s).map((id) => ({
           id,
           name: getProvider(id)?.name ?? id,
+          models: modelsForProvider(id),
         }));
         return {
           id: s.id,
@@ -99,7 +111,8 @@ export const pipelinesService = {
               : 'idle',
           counts: s.queue ? (snap[s.queue] ?? null) : null,
           provider_options: options,
-          selected_provider: selected[s.id] ?? null,
+          selected_provider: selected[s.id]?.provider ?? null,
+          selected_model: selected[s.id]?.model ?? null,
         };
       }),
     }));
@@ -197,8 +210,8 @@ export const pipelinesService = {
     return { resumed: true };
   },
 
-  /** Assign which provider powers a given step (stored in org settings). */
-  async setStepProvider(orgId: string, stepId: string, provider: string) {
+  /** Assign which provider + model powers a given step (stored in org settings). */
+  async setStepProvider(orgId: string, stepId: string, provider: string, model?: string) {
     const options = STEP_PROVIDER_OPTIONS[stepId];
     if (!options) throw new NotFoundError(`Unknown pipeline step: ${stepId}`);
     if (!options.includes(provider)) {
@@ -206,23 +219,28 @@ export const pipelinesService = {
         `Provider "${provider}" is not valid for step "${stepId}"`,
       );
     }
+    const validModels = modelsForProvider(provider);
+    if (model && validModels.length && !validModels.includes(model)) {
+      throw new BadRequestError(`Model "${model}" is not valid for provider "${provider}"`);
+    }
     const [row] = await db
       .select({ settings: organizations.settings })
       .from(organizations)
       .where(eq(organizations.id, orgId))
       .limit(1);
     const existing = (row?.settings as OrgSettings | null) ?? {};
+    const choice: StepChoice = { provider, ...(model ? { model } : {}) };
     const settings: OrgSettings = {
       ...existing,
       pipelineStepProviders: {
         ...(existing.pipelineStepProviders ?? {}),
-        [stepId]: provider,
+        [stepId]: choice,
       },
     };
     await db
       .update(organizations)
       .set({ settings, updatedAt: new Date() })
       .where(eq(organizations.id, orgId));
-    return { step_id: stepId, provider };
+    return { step_id: stepId, provider, model: model ?? null };
   },
 };

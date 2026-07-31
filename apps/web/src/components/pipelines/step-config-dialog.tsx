@@ -109,16 +109,20 @@ export function StepConfigDialog({
   const { data: integrations } = useIntegrations();
   const setProvider = useSetStepProvider();
   const [chosen, setChosen] = React.useState<string | null>(null);
+  const [model, setModel] = React.useState<string | null>(null);
 
   // Reset the selection whenever a different step opens.
   React.useEffect(() => {
     setChosen(step?.selected_provider ?? null);
+    setModel(step?.selected_model ?? null);
   }, [step]);
 
   if (!step) return null;
 
   const integrationFor = (id: string) =>
     integrations?.items.find((i) => i.id === id);
+  const chosenOption = step.provider_options.find((o) => o.id === chosen);
+  const models = chosenOption?.models ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,7 +144,14 @@ export function StepConfigDialog({
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setChosen(opt.id)}
+                  onClick={() => {
+                    setChosen(opt.id);
+                    setModel(
+                      step.selected_provider === opt.id
+                        ? (step.selected_model ?? opt.models[0] ?? null)
+                        : (opt.models[0] ?? null),
+                    );
+                  }}
                   className={`flex items-center justify-between rounded-lg border p-3 text-left transition ${
                     selected
                       ? 'border-primary ring-1 ring-primary'
@@ -170,6 +181,30 @@ export function StepConfigDialog({
             })}
           </div>
 
+          {/* Model picker for the chosen provider */}
+          {chosen && models.length ? (
+            <div>
+              <label
+                htmlFor="step-model"
+                className="mb-1.5 block text-xs font-medium"
+              >
+                Model
+              </label>
+              <select
+                id="step-model"
+                value={model ?? ''}
+                onChange={(e) => setModel(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              >
+                {models.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           {/* Key form for the chosen provider */}
           {chosen && integrationFor(chosen) ? (
             <ProviderKeyForm integration={integrationFor(chosen)!} />
@@ -185,7 +220,7 @@ export function StepConfigDialog({
             onClick={() => {
               if (!chosen) return;
               setProvider.mutate(
-                { stepId: step.id, provider: chosen },
+                { stepId: step.id, provider: chosen, ...(model ? { model } : {}) },
                 { onSuccess: () => onOpenChange(false) },
               );
             }}

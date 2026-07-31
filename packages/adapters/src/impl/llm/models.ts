@@ -31,8 +31,23 @@ export const OPENROUTER_MODELS = {
   auto: 'openrouter/auto',
 } as const;
 
+/** NVIDIA NIM (build.nvidia.com) — OpenAI-compatible, free tier for testing. */
+export const NVIDIA_MODELS = {
+  default: 'meta/llama-3.3-70b-instruct',
+  nemotron: 'nvidia/llama-3.1-nemotron-70b-instruct',
+  deepseek: 'deepseek-ai/deepseek-r1',
+} as const;
+
+export const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+
 /** Which logical provider a task prefers, in ADR-007 order. */
-export type ProviderKey = 'anthropic' | 'gemini' | 'groq' | 'openai' | 'openrouter';
+export type ProviderKey =
+  | 'anthropic'
+  | 'gemini'
+  | 'groq'
+  | 'openai'
+  | 'openrouter'
+  | 'nvidia';
 
 /**
  * Task → ordered provider preference. First available provider wins; the rest
@@ -40,12 +55,12 @@ export type ProviderKey = 'anthropic' | 'gemini' | 'groq' | 'openai' | 'openrout
  * tags/summarize → cheap Gemini Flash-Lite / Groq; research → capable+cheap.
  */
 export const TASK_PROVIDER_ORDER: Record<LlmTask, ProviderKey[]> = {
-  copywriting: ['anthropic', 'openai', 'gemini', 'openrouter', 'groq'],
-  review: ['anthropic', 'openai', 'gemini', 'openrouter'],
-  reasoning: ['anthropic', 'openai', 'gemini', 'openrouter'],
-  bulk_tags: ['gemini', 'groq', 'openai', 'anthropic', 'openrouter'],
-  summarize: ['gemini', 'groq', 'openai', 'anthropic', 'openrouter'],
-  research: ['gemini', 'anthropic', 'openai', 'openrouter', 'groq'],
+  copywriting: ['anthropic', 'openai', 'gemini', 'openrouter', 'groq', 'nvidia'],
+  review: ['anthropic', 'openai', 'gemini', 'openrouter', 'nvidia'],
+  reasoning: ['anthropic', 'openai', 'gemini', 'openrouter', 'nvidia'],
+  bulk_tags: ['gemini', 'groq', 'openai', 'anthropic', 'openrouter', 'nvidia'],
+  summarize: ['gemini', 'groq', 'openai', 'anthropic', 'openrouter', 'nvidia'],
+  research: ['gemini', 'anthropic', 'openai', 'openrouter', 'groq', 'nvidia'],
 };
 
 /** Default when no task is supplied. */
