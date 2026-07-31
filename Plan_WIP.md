@@ -90,6 +90,20 @@ Decision: web → Vercel, backend → shared Hostinger VPS (187.124.74.175). API
 - [ ] Follow-up: no committed SQL migrations — prod uses `db:push` (tech-debt); upgrade Clerk dev→prod keys
       later (needs Clerk domain CNAMEs on neuraforz.com); `scripts/deploy.sh` reruns the whole flow.
 
+## Manual JWT auth (MongoDB) — REPLACED CLERK (2026-07-31) ✅ LIVE + TESTED
+User dropped Clerk for own JWT login backed by MongoDB Atlas.
+- Backend: `JwtAuthProvider` (HS256 via jose); `POST /auth/register` + `/auth/login` (public), Mongo
+  user store (`marketforge.users`), scrypt password hashing. `createAuthProvider` prefers AUTH_JWT_SECRET.
+  Users scoped to `AUTH_DEFAULT_ORG_ID` (seed org) → RLS returns Exzelon. Fixed Mongo connect-promise
+  caching (don't cache rejected promise). Env on VPS: AUTH_JWT_SECRET, MONGODB_URI, MONGODB_DB.
+- Frontend: Clerk fully removed; `lib/auth` (localStorage token), custom `/sign-in` + `/sign-up` forms,
+  api-client sends `Bearer <jwt>`, AuthGate redirects when no token, topbar sign-out.
+- **VERIFIED end-to-end in browser**: register + login via curl (token issued, /brands→Exzelon, wrong pw→401);
+  browser login `founder@marketforge.app` → /dashboard shows "API connected" + Active brands 1 + "F" avatar.
+- Atlas gotcha: cluster IP allowlist must include the VPS (user set 0.0.0.0/0). `atlas-credentials.env` gitignored.
+- Note: Clerk backend code (packages/auth/clerk.ts, @clerk/backend dep) left in place but unused (JWT wins);
+  Vercel Clerk env vars now unused/harmless. Single-pilot-org model unchanged (all users → seed org, admin).
+
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,
   video-in-v1, launch scale, quality rubric, hosting, legal). See Master_Plan.md §2.
