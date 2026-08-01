@@ -14,7 +14,7 @@ import {
   startOfWeek,
   subMonths,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlatformIcon } from '@/components/common/platform-badge';
@@ -28,9 +28,12 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export function ContentCalendar({
   items,
   onSelect,
+  onCreate,
 }: {
   items: ContentItem[];
   onSelect: (item: ContentItem) => void;
+  /** Add content to a specific day (YYYY-MM-DD) — opens the editor in create mode. */
+  onCreate?: (dateStr: string) => void;
 }) {
   const [cursor, setCursor] = React.useState(new Date());
 
@@ -41,9 +44,13 @@ export function ContentCalendar({
   const dated = React.useMemo(() => {
     const map = new Map<string, ContentItem[]>();
     for (const it of items) {
-      const d = it.scheduled_at ?? it.generated_at ?? it.created_at;
-      if (!d) continue;
-      const key = format(new Date(d), 'yyyy-MM-dd');
+      // Prefer the planned calendar date; fall back to schedule/generation dates.
+      const key =
+        it.scheduled_date ??
+        (it.scheduled_at ?? it.generated_at ?? it.created_at
+          ? format(new Date((it.scheduled_at ?? it.generated_at ?? it.created_at)!), 'yyyy-MM-dd')
+          : null);
+      if (!key) continue;
       map.set(key, [...(map.get(key) ?? []), it]);
     }
     return map;
@@ -90,11 +97,23 @@ export function ContentCalendar({
             <div
               key={key}
               className={cn(
-                'min-h-24 border-b border-r border-border/60 p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0',
+                'group min-h-24 border-b border-r border-border/60 p-1.5 last:border-r-0 [&:nth-child(7n)]:border-r-0',
                 !isSameMonth(day, cursor) && 'bg-muted/20',
               )}
             >
-              <div className="mb-1 flex justify-end">
+              <div className="mb-1 flex items-center justify-between">
+                {onCreate ? (
+                  <button
+                    type="button"
+                    aria-label={`Add content on ${key}`}
+                    onClick={() => onCreate(key)}
+                    className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <span />
+                )}
                 <span
                   className={cn(
                     'flex h-6 w-6 items-center justify-center rounded-full text-xs',

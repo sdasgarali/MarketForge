@@ -286,8 +286,29 @@ export interface ContentItem {
   version: number;
   generated_at?: string;
   scheduled_at?: string;
+  /** Calendar day this item is planned for (YYYY-MM-DD). */
+  scheduled_date?: string;
+  /** Ordering within a day×platform cell. */
+  slot_index?: number;
   /** Convenience: resolved primary image URL (server may inline the asset). */
   image_url?: string;
+}
+
+/** Manual authoring payload for the calendar editor (create/edit). */
+export interface ContentItemInput {
+  brand_id: string;
+  platform: Platform;
+  content_type?: string;
+  scheduled_date?: string;
+  slot_index?: number;
+  language?: string;
+  title?: string;
+  body?: string;
+  caption?: string;
+  hashtags?: string[];
+  characters?: string;
+  story_prompt?: string;
+  image_prompt?: string;
 }
 
 export interface ReviewResult {

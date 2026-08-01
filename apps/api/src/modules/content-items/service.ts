@@ -283,4 +283,48 @@ export const contentItemsService = {
     log.info({ org_id: orgId, content_item_id: id, job_id: jobId }, 'content regeneration enqueued');
     return { content_item_id: id, job_id: jobId, status: 'generating' as const };
   },
+
+  /**
+   * Manual "Generate Video" trigger (operator plan §4). Builds the video prompt
+   * from the item's story prompt / caption / title and enqueues generate-video.
+   * Duration + format are caller-controlled; the worker's MEDIA-SCOPE policy still
+   * applies (short/gif; long-form paused unless VIDEO_ALLOW_LONGFORM).
+   */
+  async generateVideo(
+    orgId: string,
+    id: string,
+    opts: { duration_s?: number; output_format?: 'mp4' | 'gif'; model_hint?: string } = {},
+  ) {
+    const item = await withTenant(db, orgId, async (tx) => {
+      const [row] = await tx.select().from(contentItems).where(eq(contentItems.id, id)).limit(1);
+      if (!row) throw new NotFoundError(`Content item ${id} not found`);
+      return row;
+    });
+
+    const md = (item.metadata as Record<string, unknown> | null) ?? {};
+    const storyPrompt = typeof md.story_prompt === 'string' ? md.story_prompt : '';
+    const characters = typeof md.characters === 'string' ? md.characters : '';
+    const prompt =
+      [storyPrompt, item.caption, item.title].find((s) => s && s.trim()) ??
+      `Short social video for ${item.platform ?? 'social'}`;
+    const fullPrompt = characters ? `${prompt}\n\nCharacters: ${characters}` : prompt;
+
+    const jobId = await enqueue('generate-video', {
+      org_id: orgId,
+      brand_id: item.brandId,
+      campaign_id: item.campaignId ?? undefined,
+      content_item_id: id,
+      prompt: fullPrompt,
+      duration_s: opts.duration_s ?? 10,
+      with_audio: false,
+      output_format: opts.output_format ?? 'mp4',
+      longform: false,
+      ...(opts.model_hint ? { model_hint: opts.model_hint } : {}),
+      attempt_reason: 'manual',
+      idempotency_key: `generate-video:${id}:${Date.now()}`,
+    });
+
+    log.info({ org_id: orgId, content_item_id: id, job_id: jobId }, 'manual video generation enqueued');
+    return { content_item_id: id, job_id: jobId, status: 'generating' as const };
+  },
 };

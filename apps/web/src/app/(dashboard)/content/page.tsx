@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarDays, LayoutList } from 'lucide-react';
+import { CalendarDays, LayoutList, Plus } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/common/page-header';
@@ -18,13 +19,14 @@ import { FadeIn } from '@/components/common/motion';
 import { ContentTable } from '@/components/content/content-table';
 import { ContentCalendar } from '@/components/content/content-calendar';
 import { ContentDetailDrawer } from '@/components/content/content-detail-drawer';
+import { ContentEditorDialog } from '@/components/content/content-editor-dialog';
 import {
   useBrands,
   useContentItems,
   type ContentFilters,
 } from '@/lib/hooks';
 import { MVP_PLATFORMS } from '@/lib/types';
-import type { ContentStatus, Platform } from '@/lib/types';
+import type { ContentItem, ContentStatus, Platform } from '@/lib/types';
 
 const STATUSES: ContentStatus[] = [
   'draft',
@@ -42,12 +44,29 @@ const ALL = '__all__';
 export default function ContentPage() {
   const [filters, setFilters] = React.useState<ContentFilters>({});
   const [selected, setSelected] = React.useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<ContentItem | null>(null);
+  const [createDate, setCreateDate] = React.useState<string | undefined>(undefined);
   const { data, isLoading, isError, refetch } = useContentItems(filters);
   const { data: brands } = useBrands();
 
   const brandName = (id: string) =>
     brands?.data.items.find((b) => b.id === id)?.company_name ?? 'Brand';
   const items = data?.data.items ?? [];
+
+  // Brand new content is attached to: the active brand filter, else the first brand.
+  const editorBrandId = filters.brand ?? brands?.data.items[0]?.id;
+
+  const openCreate = (dateStr?: string) => {
+    setEditing(null);
+    setCreateDate(dateStr);
+    setEditorOpen(true);
+  };
+  const openEdit = (item: ContentItem) => {
+    setEditing(item);
+    setCreateDate(undefined);
+    setEditorOpen(true);
+  };
 
   const setFilter = (key: keyof ContentFilters, value: string) =>
     setFilters((f) => ({
@@ -60,7 +79,15 @@ export default function ContentPage() {
       <PageHeader
         title="Content"
         description="Calendar and library of every generated post across your brands."
-        actions={<MockBadge show={data?.isMock} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <MockBadge show={data?.isMock} />
+            <Button size="sm" onClick={() => openCreate()} disabled={!editorBrandId}>
+              <Plus className="h-4 w-4" />
+              New content
+            </Button>
+          </div>
+        }
       />
 
       {/* Filters */}
@@ -135,35 +162,44 @@ export default function ContentPage() {
           <div className="mt-4">
             <ErrorState onRetry={() => refetch()} />
           </div>
-        ) : items.length === 0 ? (
-          <div className="mt-4">
-            <EmptyState
-              title="No content matches these filters"
-              description="Adjust the filters or start a campaign to generate content."
-            />
-          </div>
         ) : (
           <>
             <TabsContent value="calendar">
               <FadeIn>
-                <ContentCalendar
-                  items={items}
-                  onSelect={(i) => setSelected(i.id)}
-                />
+                {/* Calendar always renders (even empty) so content can be authored. */}
+                <ContentCalendar items={items} onSelect={openEdit} onCreate={openCreate} />
               </FadeIn>
             </TabsContent>
             <TabsContent value="table">
               <FadeIn>
-                <ContentTable
-                  items={items}
-                  brandName={brandName}
-                  onSelect={(i) => setSelected(i.id)}
-                />
+                {items.length === 0 ? (
+                  <EmptyState
+                    title="No content matches these filters"
+                    description="Add content to a calendar day, adjust filters, or start a campaign."
+                  />
+                ) : (
+                  <ContentTable
+                    items={items}
+                    brandName={brandName}
+                    onSelect={(i) => setSelected(i.id)}
+                  />
+                )}
               </FadeIn>
             </TabsContent>
           </>
         )}
       </Tabs>
+
+      <ContentEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        item={editing}
+        brandId={editorBrandId}
+        defaults={{
+          scheduled_date: createDate,
+          platform: filters.platform,
+        }}
+      />
 
       <ContentDetailDrawer
         itemId={selected}

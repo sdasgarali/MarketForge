@@ -150,5 +150,29 @@ contentItemsRouter.post(
   }),
 );
 
+const GenerateVideoBody = z.object({
+  duration_s: z.number().positive().max(60).optional(),
+  output_format: z.enum(['mp4', 'gif']).optional(),
+  model_hint: z.string().max(60).optional(),
+});
+
+// Manual "Generate Video" trigger for a content item. Editor+ (incurs AI spend).
+contentItemsRouter.post(
+  '/:id/generate-video',
+  requireMinRole('editor'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    const id = parseOrThrow(Uuid, req.params.id);
+    const body = parseOrThrow(GenerateVideoBody, req.body ?? {});
+    const result = await contentItemsService.generateVideo(ctx.orgId, id, body);
+    await writeAudit(
+      ctx,
+      { action: 'content_item.generate_video', entityType: 'content_item', entityId: id, after: { job_id: result.job_id } },
+      req,
+    );
+    res.status(202).json(result);
+  }),
+);
+
 // Keep zod referenced for schema extension typing.
 export type ContentItemListQuery = z.infer<typeof ListQuery>;

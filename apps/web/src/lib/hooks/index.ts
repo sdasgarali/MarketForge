@@ -16,6 +16,7 @@ import type {
   CampaignCreateInput,
   CompositeReview,
   ContentItem,
+  ContentItemInput,
   ContentStatus,
   DashboardSummary,
   MeResponse,
@@ -305,6 +306,69 @@ export function useRegenerateContent() {
       toast.success('Regeneration queued');
     },
     onError: (e: Error) => toast.error(`Could not regenerate: ${e.message}`),
+  });
+}
+
+/** Manually author a calendar cell (date × platform). */
+export function useCreateContentItem() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: (input: ContentItemInput) =>
+      apiFetch<ContentItem>('/content-items', {
+        method: 'POST',
+        body: input,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['content-items', orgId] });
+      toast.success('Content added to the calendar');
+    },
+    onError: (e: Error) => toast.error(`Could not create: ${e.message}`),
+  });
+}
+
+/** Edit an existing content item (calendar editor). */
+export function useUpdateContentItem() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<ContentItemInput> }) =>
+      apiFetch<ContentItem>(`/content-items/${id}`, {
+        method: 'PATCH',
+        body: input,
+      }),
+    onSuccess: (item) => {
+      qc.invalidateQueries({ queryKey: ['content-items', orgId] });
+      qc.invalidateQueries({ queryKey: qk.contentItem(orgId, item.id) });
+      toast.success('Saved');
+    },
+    onError: (e: Error) => toast.error(`Could not save: ${e.message}`),
+  });
+}
+
+/** Manual "Generate Video" trigger for a content item (Seedance/Higgsfield short). */
+export function useGenerateVideoContent() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      duration_s?: number;
+      output_format?: 'mp4' | 'gif';
+      model_hint?: string;
+    }) =>
+      apiFetch<{ content_item_id: string; job_id: string; status: string }>(
+        `/content-items/${id}/generate-video`,
+        { method: 'POST', body },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['content-items', orgId] });
+      toast.success('Video generation queued');
+    },
+    onError: (e: Error) => toast.error(`Could not generate video: ${e.message}`),
   });
 }
 
