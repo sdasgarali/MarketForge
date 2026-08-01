@@ -25,6 +25,7 @@ import { ErrorState } from '@/components/common/states';
 import { FadeIn, Stagger, StaggerItem } from '@/components/common/motion';
 import { AreaTrend } from '@/components/charts/area-trend';
 import { PlatformIcon } from '@/components/common/platform-badge';
+import { CalendarWorkspace } from '@/components/content/calendar-workspace';
 import DashboardLoading from './loading';
 import { useDashboard } from '@/lib/hooks';
 import { chartColors } from '@/lib/chart-palette';
@@ -54,11 +55,11 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         title="Dashboard"
-        description="Your marketing engine at a glance — pipeline, spend, and recent activity."
+        description="Your content calendar — plan, author, and auto-fill across every brand and platform."
         actions={
           <>
             <MockBadge show={data.isMock} />
-            <Button asChild>
+            <Button asChild variant="outline">
               <Link href="/campaigns">
                 <Megaphone className="h-4 w-4" />
                 New campaign
@@ -67,6 +68,11 @@ export default function DashboardPage() {
           </>
         }
       />
+
+      {/* Calendar is the landing surface (operator plan §3). */}
+      <FadeIn>
+        <CalendarWorkspace />
+      </FadeIn>
 
       <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
