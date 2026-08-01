@@ -148,6 +148,8 @@ export function contentItemToDto(r: ContentItemRow, extras: ContentItemExtras = 
     quality_score: num(r.qualityScore),
     parent_id: r.parentId ?? undefined,
     version: r.version,
+    scheduled_date: r.scheduledDate ?? undefined,
+    slot_index: r.slotIndex ?? 0,
     generated_at: iso(r.generatedAt),
     scheduled_at: iso(extras.scheduled_at),
     image_url: extras.image_url ?? undefined,

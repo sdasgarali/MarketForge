@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -76,6 +77,9 @@ export const contentItems = pgTable(
     qualityScore: numeric('quality_score'),
     parentId: uuid('parent_id'),
     version: integer('version').notNull().default(1),
+    // Calendar model: the day this item is planned for (date × platform × slot).
+    scheduledDate: date('scheduled_date'),
+    slotIndex: integer('slot_index').notNull().default(0),
     generatedAt: timestamp('generated_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -86,6 +90,7 @@ export const contentItems = pgTable(
     index('content_items_campaign_id_idx').on(t.campaignId),
     index('content_items_status_idx').on(t.status),
     index('content_items_parent_id_idx').on(t.parentId),
+    index('content_items_scheduled_date_idx').on(t.scheduledDate),
   ],
 );
 

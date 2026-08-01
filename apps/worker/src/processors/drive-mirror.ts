@@ -65,6 +65,7 @@ export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ pay
       hashtags: string[] | null;
       platform: string | null;
       contentType: string | null;
+      scheduledDate: string | null;
       createdAt: Date;
     } | null = null;
     if (row.contentItemId) {
@@ -76,6 +77,7 @@ export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ pay
           hashtags: contentItems.hashtags,
           platform: contentItems.platform,
           contentType: contentItems.contentType,
+          scheduledDate: contentItems.scheduledDate,
           createdAt: contentItems.createdAt,
         })
         .from(contentItems)
@@ -107,9 +109,12 @@ export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ pay
   let driveFileRef: string;
   const drive = await getOrgDrive(org_id);
   if (drive) {
+    const folderDate = meta.ci?.scheduledDate
+      ? new Date(`${meta.ci.scheduledDate}T00:00:00Z`)
+      : (meta.ci?.createdAt ?? new Date());
     const path = driveContentPath({
       brandName: meta.brandName,
-      date: meta.ci?.createdAt ?? new Date(),
+      date: folderDate,
       platform: meta.ci?.platform,
       kind: meta.kind,
       contentType: meta.ci?.contentType,
