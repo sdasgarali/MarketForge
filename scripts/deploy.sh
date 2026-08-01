@@ -62,10 +62,11 @@ else
 fi
 
 echo "==> [5/6] Migrate + bring up services"
+# NOTE: n8n was removed (automation runs in the backend worker) — infra is postgres + redis only.
 if [ "$INFRA_ONLY" -eq 1 ]; then
-  ssh_vps "cd $REMOTE_DIR && $COMPOSE up -d postgres redis n8n && $COMPOSE --profile full run --rm migrate"
+  ssh_vps "cd $REMOTE_DIR && $COMPOSE up -d postgres redis && $COMPOSE --profile full run --rm migrate"
 else
-  ssh_vps "cd $REMOTE_DIR && $COMPOSE up -d postgres redis n8n && $COMPOSE --profile full run --rm migrate && $COMPOSE --profile full up -d api worker"
+  ssh_vps "cd $REMOTE_DIR && $COMPOSE up -d postgres redis && $COMPOSE --profile full run --rm migrate && $COMPOSE --profile full up -d api worker"
 fi
 
 echo "==> [6/6] Health check"
