@@ -1,17 +1,19 @@
 # Plan WIP
 
 ## SESSION_CONTEXT_RETRIEVAL
-> **Local stack is LIVE** (2026-07-31). Full bring-up done: Docker infra (mf-postgres :5433,
-> mf-redis :6380, mf-n8n :5678 — all healthy) + migrate + seed (org/admin/Exzelon brand) + all
-> three apps up (api :8080 healthy, worker 9 processors + health :9090, web :3000 → /dashboard 200).
-> API smoke-tested with `x-org-id: 1111…1111` (seed org): /brands returns Exzelon, /dashboard/summary,
-> /analytics, /content-items all return correct envelopes. RLS scoping verified (1 brand for org).
-> FIXED: config `.env` loader was CWD-relative → broke every entrypoint launched from a package dir
-> (db scripts, api/worker under turbo). Now walks UP to repo-root `.env` (loadEnv + new `loadRootEnv()`);
-> wired into migrate.ts/push.ts. 12/12 test tasks green, config+db typecheck clean.
-> NEXT STEP: full pipeline loop (Research→Generate→…→Publish) needs REAL API keys (Anthropic/fal/
-> Ayrshare) — adapters inert without them. Enqueue a job to test queue wiring, or provide keys.
-> To restart stack: `docker compose up -d` (infra already persists via restart:unless-stopped) → `pnpm dev`.
+> **Control surface + orchestration are LIVE & deployed** (VPS api/worker + Vercel web). Latest front:
+> AI 1 (orchestrator) now branches on **in-app Contacts** (DB, no CSV) — reads brand contacts with
+> `status='new'` → Pipeline 2 (video); else → Pipeline 3 (research). CSV-in-Drive kept as fallback.
+> New `contacts` table (RLS + grant), `contactsService` (list/add/remove), brand routes, and a
+> **Contacts panel** on the brand page (add/remove leads = AI 1's data source). All committed (41ccfb4).
+> STANDING ENGINEERING GAP (the recurring "stored but not forwarded"): per-step provider/model tile
+> selections live in `organizations.settings.pipelineStepProviders` but the **worker never reads them** —
+> generation routing uses the org's whole configured provider set, not the per-step choice, and the
+> chosen model is not threaded as `model_hint` into the agent LLM call. Also pending: RAG retrieval into
+> prompts (store✓ / retrieve pending). None of these need user keys — pure engineering.
+> NEXT STEP (proposed): thread per-step provider+model from `pipelineStepProviders` → the enqueued job →
+> worker processor → agent LLM call, so tile selections actually take effect at generation time.
+> To restart stack: `docker compose up -d` (infra persists via restart:unless-stopped) → `pnpm dev`.
 
 ## Decisions locked (2026-07-31)
 - MVP platforms: **X + Instagram** · Budget: **lean < $500/mo** · Policy: **per-brand trust tiers** ·
@@ -254,6 +256,18 @@ Was single-pilot-org + RLS bypassed (app connected as superuser). Now real MT:
 - STILL NEEDS for real OUTPUT in Drive: (1) a VALID AI key (NVIDIA free etc.) so generation produces
   assets; (2) a Google SHARED DRIVE (service accounts can't write to personal My Drive) + service
   account added. Then research→generate→drive-mirror lands files in Drive.
+
+## In-app Contacts store — AI 1 data source without CSV (2026-08-01) ✅ LIVE + DEPLOYED
+- Operator wanted AI 1 to not depend on a Drive CSV. New `contacts` table (org+brand scoped, RLS +
+  grant to marketforge_app; status new/processed, source manual/csv). `contactsService` list/add/remove.
+- Brand routes: GET/POST/DELETE `/brands/:id/contacts`. Web: `brand-contacts.tsx` panel on the brand
+  detail page + `hooks/contacts.ts` (add name/handle/company, remove, live list).
+- `orchestrate` (AI 1) rewritten: PRIMARY source = in-app contacts with `status='new'` → Pipeline 2
+  (video); marks them `processed` after enqueue. FALLBACK = a "<Brand> csv" in Drive (row-count vs
+  brands.knowledgeBase.processedContacts). No new contacts anywhere → Pipeline 3 (research).
+- Committed 6782833 (backend + processor) + 41ccfb4 (web panel). Working tree clean.
+- REMAINING: verify the panel end-to-end in browser (add a contact → Start pipeline → AI 1 branches to
+  Pipeline 2); auto-ingest contacts from a real source later.
 
 ## Blockers / Notes
 - BLOCKER: 8 open questions must be answered before Phase 1 (platforms, budget, auto-publish policy,

@@ -15,14 +15,35 @@ import { defineProcessor } from './base.js';
 import { TerminalError, toError } from '../lib/errors.js';
 import { getBrand } from '../lib/brand.js';
 import { getOrgDrive } from '../lib/org-drive.js';
+import { driveContentPath, safeSegment } from '../lib/drive-path.js';
 
 const EXT: Record<string, string> = { image: 'png', video: 'mp4', gif: 'gif', audio: 'mp3' };
-const SUBFOLDER: Record<string, string> = { video: 'videos', gif: 'videos', image: 'images' };
+
+/** Compose the Topic + Content text file body from a content item. */
+function buildTxt(ci: {
+  title: string | null;
+  body: string | null;
+  caption: string | null;
+  hashtags: string[] | null;
+  platform: string | null;
+}): string {
+  const lines: string[] = [];
+  lines.push(`Topic: ${ci.title || 'Untitled'}`);
+  if (ci.platform) lines.push(`Platform: ${ci.platform}`);
+  lines.push('');
+  if (ci.body) lines.push(ci.body);
+  else if (ci.caption) lines.push(ci.caption);
+  if (ci.hashtags?.length) {
+    lines.push('');
+    lines.push(ci.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' '));
+  }
+  return lines.join('\n');
+}
 
 export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ payload, log }) => {
   const { org_id, asset_id, storage_key } = payload;
 
-  // Load the asset + resolve the target brand + topic (folder = <Brand>/videos/<topic>).
+  // Load the asset + resolve the target brand + content item (for date/platform/topic).
   const meta = await withTenant(db, org_id, async (tx) => {
     const [row] = await tx
       .select({
@@ -37,16 +58,38 @@ export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ pay
       .limit(1);
     if (!row) throw new TerminalError(`asset not found: ${asset_id}`);
     const brand = await getBrand(tx, row.brandId ?? (payload.brand_id as string));
-    let topic = 'general';
+    let ci: {
+      title: string | null;
+      body: string | null;
+      caption: string | null;
+      hashtags: string[] | null;
+      platform: string | null;
+      contentType: string | null;
+      createdAt: Date;
+    } | null = null;
     if (row.contentItemId) {
-      const [ci] = await tx
-        .select({ title: contentItems.title })
+      const [found] = await tx
+        .select({
+          title: contentItems.title,
+          body: contentItems.body,
+          caption: contentItems.caption,
+          hashtags: contentItems.hashtags,
+          platform: contentItems.platform,
+          contentType: contentItems.contentType,
+          createdAt: contentItems.createdAt,
+        })
         .from(contentItems)
         .where(eq(contentItems.id, row.contentItemId))
         .limit(1);
-      topic = (ci?.title || 'general').replace(/[\\/]/g, '-').slice(0, 80);
+      ci = found ?? null;
     }
-    return { key: row.storageKey ?? storage_key, kind: row.kind, mimeType: row.mimeType, brandName: brand?.companyName ?? 'Brand', topic };
+    return {
+      key: row.storageKey ?? storage_key,
+      kind: row.kind,
+      mimeType: row.mimeType,
+      brandName: brand?.companyName ?? 'Brand',
+      ci,
+    };
   });
 
   if (!meta.key) throw new TerminalError(`asset ${asset_id} has no storage key to mirror`);
@@ -59,12 +102,19 @@ export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ pay
     throw new Error(`storage.get failed for ${meta.key}: ${toError(err).message}`);
   }
 
-  // Upload to the org's Google Drive under <Brand>/<videos|images>/<topic>/.
+  // Upload to the org's Google Drive under the operator's File Structure:
+  //   <Brand>/<Year>/<Month>/<Day>/<Platform>/<TypeSubfolder>/  (+ a <topic>.txt in <Platform>/).
   let driveFileRef: string;
   const drive = await getOrgDrive(org_id);
   if (drive) {
-    const sub = SUBFOLDER[meta.kind] ?? 'assets';
-    const folderId = await drive.ensureFolderPath([meta.brandName, sub, meta.topic]);
+    const path = driveContentPath({
+      brandName: meta.brandName,
+      date: meta.ci?.createdAt ?? new Date(),
+      platform: meta.ci?.platform,
+      kind: meta.kind,
+      contentType: meta.ci?.contentType,
+    });
+    const folderId = await drive.ensureFolderPath(path.folderParts);
     const ext = EXT[meta.kind] ?? 'bin';
     const file = await drive.uploadFile(
       `${meta.kind}-${asset_id.slice(0, 8)}.${ext}`,
@@ -74,9 +124,30 @@ export const driveMirrorProcessor = defineProcessor('drive-mirror', async ({ pay
     );
     driveFileRef = file.id;
     log.info(
-      { asset_id, folder: `${meta.brandName}/${sub}/${meta.topic}`, driveFileId: file.id },
+      { asset_id, folder: path.folderParts.join('/'), driveFileId: file.id },
       'drive-mirror uploaded to Google Drive',
     );
+
+    // Write the Topic + Content TXT into the Platform folder (once per content item).
+    if (meta.ci) {
+      try {
+        const platformFolderId = await drive.ensureFolderPath(path.platformParts);
+        const txtName = `${safeSegment(meta.ci.title || 'content')}.txt`;
+        const existing = await drive.findFiles(
+          `'${platformFolderId}' in parents and name='${txtName.replace(/'/g, "\\'")}' and trashed=false`,
+        );
+        if (!existing.length) {
+          await drive.uploadFile(
+            txtName,
+            Buffer.from(buildTxt(meta.ci), 'utf8'),
+            'text/plain; charset=utf-8',
+            platformFolderId,
+          );
+        }
+      } catch (err) {
+        log.warn({ err: String(err) }, 'drive-mirror: TXT write failed (non-fatal)');
+      }
+    }
   } else {
     // No Drive configured → record a placeholder (S3 remains system of record).
     driveFileRef = `drive/${asset_id}`;

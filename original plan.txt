@@ -1,0 +1,351 @@
+Web Design
+
+1. Website should be Multi-Tenant
+
+Tenant examples:
+
+Exzelon
+
+Neuraforz
+
+Medeoan
+
+Future tenants
+
+
+
+---
+
+2.
+
+If user selects any tenant, then they are redirected to that tenant's home screen.
+
+
+---
+
+3. Dashboard
+
+Initially there will be a calendar.
+
+Each date can contain:
+
+Instagram
+
+YouTube
+
+Facebook
+
+LinkedIn 
+
+
+User can:
+
+View content
+
+Edit content by clicking the social media icon or calendar date
+
+Open an edit section
+
+Manually input:
+
+Characters
+
+Images
+
+Content
+
+Story prompts
+
+
+
+
+---
+
+4.
+
+User can manually trigger Generate Video.
+
+Content should be generated using Seedance 2.0 (Higgsfield AI).
+
+
+---
+
+5. Automation
+
+Multiple AI agents:
+
+1. Brain (makes all decisions)
+
+
+2. Content Writer
+
+
+3. Character Designer
+
+
+4. Market Researcher
+
+
+5. Competitor Analyzer
+
+
+6. Social Media Manager
+
+ETC.
+
+
+
+
+---
+
+6.
+
+When user presses Auto:
+
+System checks the calendar.
+
+For one complete day it will:
+
+Perform market research
+
+Find trending topics
+
+Create content for:
+
+Instagram
+
+Facebook
+
+YouTube
+
+LinkedIn
+
+
+Generate:
+
+Videos
+
+Posters
+
+Images
+
+
+
+Everything for that day is completed automatically.
+
+
+---
+
+Generate at least 3 months of content in 7 days.
+
+If generation speed is high, generate:
+
+6 months
+
+or 1 year
+
+
+Storage available:
+
+5 TB Google Drive
+
+
+---
+
+7. Auto Workflow
+
+When Auto starts:
+
+System checks how many days are completed.
+
+Market Research Manager
+
+Sub-Agent 1
+
+Analyze tenant
+
+
+Sub-Agent 2
+
+Find competitors
+
+Analyze competitors' social media
+
+
+Sub-Agent 3
+
+Find business strategy
+
+
+Reports are sent to the Market Research Manager AI.
+
+It analyzes everything and decides:
+
+What content is needed
+
+Which social platform
+
+Best topics
+
+Best posting format
+
+
+Example:
+
+LinkedIn:
+
+Poster
+
+Blog
+
+Case Study
+
+Tech News
+
+Video
+
+GIF
+
+
+
+---
+
+8. Content Writer
+
+Topic is transferred to the Content Writer section.
+
+One AI writes content.
+
+Another AI reviews it.
+
+If it fails quality review:
+
+Sent back
+
+Fixed
+
+Reviewed again
+
+
+Output:
+
+Topic + Content
+
+
+---
+
+If Image/Poster
+
+Send to Poster Artist AI
+
+↓
+
+Analyze
+
+↓
+
+Generate Poster
+
+
+---
+
+If Video/Short
+
+Send to:
+
+Character Design AI
+
+Component Design AI
+
+
+↓
+
+Generate characters & components
+
+↓
+
+Topic + Content + Characters + Components
+
+↓
+
+Seedance 2.0 (Higgsfield)
+
+↓
+
+If duration is 1–10 seconds
+
+↓
+
+Short finished
+
+
+---
+
+If Long Video
+
+If video is 5 minutes:
+
+Divide into small chunks.
+
+Example:
+
+10 sec × 6 × 5
+
+Generate approximately 30 short 10-second videos.
+
+Store everything in Google Drive.
+
+
+---
+
+File Structure
+
+File name:
+
+Day / Month / Year
+
+Platform folders:
+
+Instagram
+
+YouTube
+
+LinkedIn
+
+Facebook
+
+
+Inside every folder:
+
+TXT file (Topic + Content)
+
+
+If Video:
+
+Create Video folder
+
+Store all videos
+
+
+If Short:
+
+Create Shorts folder
+
+Store short videos
+
+
+If Blog / Case Study / Poster / News:
+
+Create Image folder
+
+Store related images
+
+
+If GIF:
+
+Create GIF folder
+
+Store GIFs
+
+
+
