@@ -80,19 +80,42 @@ describe('resolveMediaPlan', () => {
     expect(plan.reason).toMatch(/disabled/);
   });
 
-  it('allows long-form (no pause, honours full duration) when the switch is on', () => {
+  it('routes long-form to "longform" with chunk rounds when the switch is on', () => {
     const plan = resolveMediaPlan(
       { durationS: 45, longform: true },
-      { ...CFG, allowLongform: true },
+      { ...CFG, allowLongform: true, clipMaxS: 10, longformMaxS: 300 },
     );
-    expect(plan.action).toBe('short');
-    expect(plan.durationS).toBe(45); // not clamped when explicitly allowed
+    expect(plan.action).toBe('longform');
+    expect(plan.durationS).toBe(45);
+    expect(plan.clipS).toBe(10);
+    expect(plan.rounds).toBe(5); // ceil(45 / 10)
     expect(plan.model).toBe('kling');
   });
 
-  it('allows an over-cap non-longform duration when the switch is on', () => {
-    const plan = resolveMediaPlan({ durationS: 20 }, { ...CFG, allowLongform: true });
-    expect(plan.action).toBe('short');
-    expect(plan.durationS).toBe(20);
+  it('routes an over-cap non-longform duration to "longform" when the switch is on', () => {
+    const plan = resolveMediaPlan(
+      { durationS: 20 },
+      { ...CFG, allowLongform: true, clipMaxS: 10, longformMaxS: 300 },
+    );
+    expect(plan.action).toBe('longform');
+    expect(plan.rounds).toBe(2); // ceil(20 / 10)
+  });
+
+  it('caps long-form total length at longformMaxS (runaway guard)', () => {
+    const plan = resolveMediaPlan(
+      { durationS: 9999, longform: true },
+      { ...CFG, allowLongform: true, clipMaxS: 10, longformMaxS: 300 },
+    );
+    expect(plan.action).toBe('longform');
+    expect(plan.durationS).toBe(300);
+    expect(plan.rounds).toBe(30); // 300 / 10
+  });
+
+  it('clamps clip length to the short cap', () => {
+    const plan = resolveMediaPlan(
+      { durationS: 60, longform: true },
+      { ...CFG, shortMaxS: 8, allowLongform: true, clipMaxS: 20, longformMaxS: 300 },
+    );
+    expect(plan.clipS).toBe(8); // clipMaxS clamped down to shortMaxS
   });
 });

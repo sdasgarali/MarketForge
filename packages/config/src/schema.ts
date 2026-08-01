@@ -105,6 +105,10 @@ export const envSchema = z.object({
   VIDEO_SHORT_MAX_S: z.coerce.number().positive().default(15),
   GIF_MAX_S: z.coerce.number().positive().default(6),
   VIDEO_DEFAULT_MODEL: z.string().min(1).default('kling'),
+  /** Per-clip length for long-form chunking (each round generates this many s). */
+  VIDEO_CLIP_MAX_S: z.coerce.number().positive().default(10),
+  /** Hard cap on a single long-form video's total length (seconds) — runaway guard. */
+  VIDEO_LONGFORM_MAX_S: z.coerce.number().positive().default(300),
   /** @deprecated legacy Phase-3 gate; mapped onto VIDEO_ENABLED. */
   WORKER_ENABLE_VIDEO: booleanish.optional(),
 

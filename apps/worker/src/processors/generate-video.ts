@@ -20,7 +20,7 @@
  */
 import { adapters } from '@marketforge/adapters';
 import { env } from '@marketforge/config';
-import { enqueueNotify } from '@marketforge/queue';
+import { enqueueNotify, enqueueDriveMirror } from '@marketforge/queue';
 import { db, withTenant, assets, contentItems } from '@marketforge/db';
 import { eq } from 'drizzle-orm';
 import { logAiRun } from '@marketforge/logger';
@@ -34,6 +34,7 @@ import { setContentStatus } from '../lib/content.js';
 import { writeAudit } from '../lib/audit.js';
 import { resolveMediaPlan, type MediaPlan } from '../lib/media-policy.js';
 import { downloadToBuffer, exportGif, GifExportUnavailableError } from '../lib/gif.js';
+import { concatMp4, VideoConcatUnavailableError } from '../lib/video-concat.js';
 import { composeVideoPrompt, designVideoScene } from '../agents/video-design.agent.js';
 
 /** Media policy config drawn from the validated env (single source of truth). */
@@ -44,7 +45,25 @@ function mediaConfig() {
     shortMaxS: env.VIDEO_SHORT_MAX_S,
     gifMaxS: env.GIF_MAX_S,
     defaultModel: env.VIDEO_DEFAULT_MODEL,
+    clipMaxS: env.VIDEO_CLIP_MAX_S,
+    longformMaxS: env.VIDEO_LONGFORM_MAX_S,
   };
+}
+
+/** Best-effort: enqueue a Drive mirror for a stored video/gif asset. */
+async function mirrorAsset(
+  payload: VideoPayload,
+  assetId: string,
+  storageKey: string,
+  log: Logger,
+): Promise<void> {
+  await enqueueDriveMirror({
+    org_id: payload.org_id,
+    brand_id: payload.brand_id,
+    asset_id: assetId,
+    storage_key: storageKey,
+    attempt_reason: 'initial',
+  }).catch((err) => log.warn({ err: toError(err).message, assetId }, 'failed to enqueue drive-mirror'));
 }
 
 /** Deterministic storage key for a generated video/gif asset. */
@@ -116,6 +135,11 @@ export const generateVideoProcessor = defineProcessor('generate-video', async ({
       return {};
     });
     finalPrompt = composeVideoPrompt(payload.prompt, design);
+  }
+
+  // --- LONG-FORM: generate N ≤clipS clips, concatenate, store one mp4 --------
+  if (plan.action === 'longform') {
+    return await handleLongform(payload, plan, finalPrompt, log);
   }
 
   // --- Generate the clip (short or gif source) — silent for gif ------------
@@ -250,8 +274,135 @@ async function handleShort(
     throw new TerminalError(`failed to persist video asset: ${toError(err).message}`, err);
   });
 
+  // Mirror the video to the brand's Drive (Video/Shorts folder — ADR-006 + plan §8).
+  const storageKey = await withTenant(db, payload.org_id, async (tx) => {
+    const [row] = await tx.select({ storageKey: assets.storageKey }).from(assets).where(eq(assets.id, assetId)).limit(1);
+    return row?.storageKey ?? '';
+  });
+  await mirrorAsset(payload, assetId, storageKey, log);
+
   log.info({ content_item_id: payload.content_item_id, asset_id: assetId }, 'generate-video (short) complete');
   return { action: 'short', asset_id: assetId };
+}
+
+/**
+ * Long-form (operator plan §8): generate `plan.rounds` clips of `plan.clipS`
+ * seconds each, concatenate them into a single mp4, store it (kind=video) and
+ * mirror to Drive. If ffmpeg concat is unavailable, degrade: store each clip as
+ * its own asset + notify (no crash, still lands the footage).
+ */
+async function handleLongform(
+  payload: VideoPayload,
+  plan: MediaPlan,
+  prompt: string,
+  log: Logger,
+): Promise<{ action: 'longform'; asset_id?: string; asset_ids: string[]; degraded: boolean; rounds: number }> {
+  const { org_id, brand_id, campaign_id } = payload;
+  const rounds = Math.max(1, plan.rounds ?? 1);
+  const clipS = Math.max(1, plan.clipS ?? 10);
+
+  // 1) Generate the clips sequentially (bounded spend; each is logged).
+  const clips: Buffer[] = [];
+  for (let i = 0; i < rounds; i++) {
+    const startedAt = Date.now();
+    const video = await adapters.video.generateVideo({
+      prompt: `${prompt}\n\n(Part ${i + 1} of ${rounds}, continuous scene)`,
+      durationS: clipS,
+      withAudio: plan.withAudio,
+      modelHint: plan.model,
+    });
+    logAiRun(log, {
+      workflow: 'generate-video',
+      agent: 'video_prompt_engineer',
+      model: video.usage.model,
+      provider: video.usage.provider,
+      tokens_in: video.usage.tokens_in ?? 0,
+      tokens_out: video.usage.tokens_out ?? 0,
+      cost_usd: video.usage.cost_usd ?? 0,
+      latency_ms: video.usage.latency_ms || Date.now() - startedAt,
+      retries: 0,
+      org_id,
+      brand_id,
+      campaign_id,
+      content_item_id: payload.content_item_id,
+      status: 'ok',
+    });
+    const buf = await resolveMp4Buffer(video);
+    if (buf) clips.push(buf);
+    else log.warn({ round: i + 1 }, 'long-form clip returned no bytes; skipping');
+  }
+
+  if (clips.length === 0) throw new TerminalError('long-form produced no usable clips');
+
+  // 2) Concatenate; degrade to per-clip storage if ffmpeg is unavailable.
+  let finalMp4: Buffer | undefined;
+  let degraded = false;
+  try {
+    finalMp4 = await concatMp4(clips);
+  } catch (err) {
+    if (err instanceof VideoConcatUnavailableError) {
+      degraded = true;
+      log.warn({ err: err.message }, 'ffmpeg concat unavailable; storing clips individually');
+    } else {
+      throw new TerminalError(`long-form concat failed: ${toError(err).message}`, err);
+    }
+  }
+
+  // 3) Store + mirror.
+  const assetIds: string[] = [];
+  const toStore: Buffer[] = finalMp4 ? [finalMp4] : clips;
+  await withTenant(db, org_id, async (tx) => {
+    for (const buf of toStore) {
+      const key = mediaKey(org_id, brand_id!, payload.content_item_id, 'mp4');
+      const stored = await adapters.storage.put(key, buf, 'video/mp4');
+      const inserted = await tx
+        .insert(assets)
+        .values({
+          orgId: org_id,
+          brandId: brand_id!,
+          contentItemId: payload.content_item_id ?? null,
+          kind: 'video',
+          storageKey: stored.key,
+          mimeType: 'video/mp4',
+          bytes: stored.bytes ?? null,
+          status: 'ready',
+        })
+        .returning({ id: assets.id, storageKey: assets.storageKey });
+      const row = inserted[0];
+      if (row) {
+        assetIds.push(row.id);
+        await mirrorAsset(payload, row.id, row.storageKey ?? stored.key, log);
+      }
+    }
+    await writeAudit(tx, org_id, {
+      action: degraded ? 'video.longform.degraded' : 'video.longform',
+      entityType: 'content_item',
+      entityId: payload.content_item_id,
+      after: { rounds, clip_s: clipS, degraded, asset_count: assetIds.length },
+    });
+  }).catch((err) => {
+    throw new TerminalError(`failed to persist long-form video: ${toError(err).message}`, err);
+  });
+
+  if (degraded) {
+    await enqueueNotify({
+      org_id,
+      brand_id,
+      campaign_id,
+      channel: 'dashboard',
+      type: 'warning',
+      title: 'Long-form video stored as clips',
+      body: `ffmpeg was unavailable, so ${assetIds.length} clips were stored individually instead of one concatenated video.`,
+      payload: { content_item_id: payload.content_item_id ?? null },
+      attempt_reason: 'initial',
+    }).catch(() => undefined);
+  }
+
+  log.info(
+    { content_item_id: payload.content_item_id, rounds, assets: assetIds.length, degraded },
+    'generate-video (long-form) complete',
+  );
+  return { action: 'longform', asset_id: assetIds[0], asset_ids: assetIds, degraded, rounds };
 }
 
 /**
@@ -372,6 +523,15 @@ async function handleGif(
   }).catch((err) => {
     throw new TerminalError(`failed to persist gif assets: ${toError(err).message}`, err);
   });
+
+  // Mirror each stored asset to Drive (Video/ + GIF/ folders — ADR-006 + plan §8).
+  for (const assetId of assetIds) {
+    const storageKey = await withTenant(db, org_id, async (tx) => {
+      const [row] = await tx.select({ storageKey: assets.storageKey }).from(assets).where(eq(assets.id, assetId)).limit(1);
+      return row?.storageKey ?? '';
+    });
+    await mirrorAsset(payload, assetId, storageKey, log);
+  }
 
   if (degraded) {
     await enqueueNotify({

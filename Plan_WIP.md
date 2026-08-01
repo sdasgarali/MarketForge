@@ -18,9 +18,16 @@
 >     decides platforms+formats, wired into `research` (fan-out targets recommended platforms).
 >     **Character + Component designers** wired into `generate-video` (prompt enrichment, +3 tests,
 >     worker tests 34). Removed orphaned single-shot research agent.
-> NEXT: **S6 — video** (Seedance 2.0 / Higgsfield adapter + long-form chunking N×10s→concat→Drive).
-> ⚠ S6 has a DECISION: long-form is PAUSED by the locked MVP cost guardrail (VIDEO_ALLOW_LONGFORM=false);
-> the original plan wants long-video chunking = real spend. Confirm before enabling.
+>   • **S6** (long-form video, GUARDED): media-policy `longform` action (rounds×clipS, cap
+>     VIDEO_LONGFORM_MAX_S) + `concatMp4()` ffmpeg helper; generate-video loops clips→concat→one mp4→store
+>     +Drive mirror; degrades to per-clip if no ffmpeg. **Videos now mirror to Drive** (short/gif/longform).
+>     Still OFF by default (VIDEO_ALLOW_LONGFORM=false) → zero spend. Worker tests 36. (operator: "build OFF")
+> ALL major original-plan slices (S1–S4, Auto day-fill, S6) are BUILT + green (typecheck 19/19; adapters 33,
+> api 10, worker 36 tests). NOT yet deployed (local commits) or browser-tested. Remaining polish:
+>   - Dashboard = literal calendar landing (calendar currently on /content) — small route change.
+>   - Dedicated Seedance 2.0 / Higgsfield video adapter (currently fal/Kling per clip).
+>   - Apply DDL `scripts/ddl/2026-08-01-calendar-columns.sql` on existing DBs before deploy.
+>   - Live output still needs a real AI key (NVIDIA free) + a Google Shared Drive shared with the SA.
 > NOT YET DEPLOYED to VPS/Vercel (local commits only). DDL `scripts/ddl/2026-08-01-calendar-columns.sql`
 > must be applied to any existing DB (db:push isn't incremental). Live output still needs a real AI key
 > + a Google **Shared Drive** shared with the service account.

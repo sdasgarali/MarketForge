@@ -61,11 +61,15 @@
   - **Character Designer + Component Designer** (`video-design.agent.ts`, pure `composeVideoPrompt` +
     3 tests) wired into `generate-video`: expand the brief into on-brand character + scene descriptions
     folded into the video prompt (best-effort). Brain = `orchestrate` (implicit) + supervisor panel.
-- [ ] **S6 — Video: Seedance 2.0 / Higgsfield wiring + long-form chunking** (N×10s → ffmpeg concat →
-    Drive Video folder). ⚠ DECISION NEEDED: long-form is PAUSED by the locked MVP cost guardrail
-    (`VIDEO_ALLOW_LONGFORM=false`, CLAUDE.md). The original plan wants long-video chunking → real spend.
-    Also needs a real Higgsfield/Seedance adapter (MCP/API). Manual Generate-Video trigger endpoint DONE
-    in S3.
+- [x] **S6 — Long-form video chunking (GUARDED).** ✅ (operator chose "build it, keep it OFF")
+  - media-policy: new `longform` action (rounds × clipS, total capped at `VIDEO_LONGFORM_MAX_S`), +4 tests.
+  - `generate-video`: generates N clips → `concatMp4()` (ffmpeg concat demuxer, temp-file, cross-platform)
+    → one mp4 → store + **Drive mirror**. Degrades to per-clip storage + notify if ffmpeg is absent.
+  - **Videos now mirror to Drive** (short/gif/long-form all enqueue drive-mirror → land in the
+    Video/Shorts/GIF folders from S1). Config: `VIDEO_CLIP_MAX_S` (10), `VIDEO_LONGFORM_MAX_S` (300).
+  - **Still OFF by default** (`VIDEO_ALLOW_LONGFORM=false`) → zero spend until flipped. CLAUDE.md updated.
+  - NOTE: still uses the fal video adapter (Kling) per clip; a dedicated **Seedance 2.0 / Higgsfield**
+    adapter is a separate future task (the manual Generate-Video trigger + model_hint plumbing is ready).
 
 ## Honest constraints (unchanged)
 - Live generation needs a valid AI key (NVIDIA free tier works) + a Google **Shared Drive** shared with

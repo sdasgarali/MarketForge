@@ -17,7 +17,7 @@
  *      model defaults to `defaultModel` (kling), mp4, audio as requested.
  */
 
-export type MediaAction = 'short' | 'gif' | 'paused';
+export type MediaAction = 'short' | 'gif' | 'paused' | 'longform';
 export type OutputFormat = 'mp4' | 'gif';
 
 export interface MediaPolicyConfig {
@@ -31,6 +31,10 @@ export interface MediaPolicyConfig {
   gifMaxS: number;
   /** Default video model when no hint is supplied (VIDEO_DEFAULT_MODEL). */
   defaultModel: string;
+  /** Per-clip length for long-form chunking (VIDEO_CLIP_MAX_S). Default 10. */
+  clipMaxS?: number;
+  /** Hard cap on a single long-form video's total length (VIDEO_LONGFORM_MAX_S). */
+  longformMaxS?: number;
 }
 
 export interface MediaPolicyInput {
@@ -56,6 +60,10 @@ export interface MediaPlan {
   withAudio: boolean;
   /** Final output container the processor should persist. */
   outputFormat: OutputFormat;
+  /** For 'longform': number of clip rounds to generate then concatenate. */
+  rounds?: number;
+  /** For 'longform': length of each clip round (seconds). */
+  clipS?: number;
   /** Human-readable explanation (audit log + notification body). */
   reason: string;
 }
@@ -106,6 +114,26 @@ export function resolveMediaPlan(
     };
   }
 
+  // 1b) Long-form ALLOWED: chunk the total into N clip-rounds to concatenate.
+  //     Total length is capped by longformMaxS (runaway guard); each round is
+  //     clipMaxS (<= shortMaxS). rounds = ceil(total / clipS).
+  if (isBig && config.allowLongform) {
+    const clipS = clamp(config.clipMaxS ?? 10, 1, config.shortMaxS);
+    const longformMaxS = config.longformMaxS ?? 300;
+    const total = clamp(requested || longformMaxS, clipS, longformMaxS);
+    const rounds = Math.max(1, Math.ceil(total / clipS));
+    return {
+      action: 'longform',
+      model: input.modelHint ?? config.defaultModel,
+      durationS: total,
+      withAudio: Boolean(input.withAudio),
+      outputFormat: 'mp4',
+      rounds,
+      clipS,
+      reason: `long-form video (${total}s = ${rounds} × ${clipS}s clips, model=${input.modelHint ?? config.defaultModel})`,
+    };
+  }
+
   // 2) GIF: short SILENT clip, clamped to the GIF cap, exported to .gif.
   if (wantsGif) {
     const durationS = clamp(requested || config.gifMaxS, 1, config.gifMaxS);
@@ -120,18 +148,14 @@ export function resolveMediaPlan(
   }
 
   // 3) Short: clamp to the short cap; default model is kling; audio as asked.
+  //    (Long-form was already handled above, so `requested` is within the cap.)
   const durationS = clamp(requested || config.shortMaxS, 1, config.shortMaxS);
-  const bigButAllowed = isBig && config.allowLongform;
-  // If long-form is explicitly allowed, honour the requested duration (no clamp).
-  const finalDuration = bigButAllowed ? Math.max(1, requested) : durationS;
   return {
     action: 'short',
     model: input.modelHint ?? config.defaultModel,
-    durationS: finalDuration,
+    durationS,
     withAudio: Boolean(input.withAudio),
     outputFormat: 'mp4',
-    reason: bigButAllowed
-      ? `long-form allowed (${finalDuration}s, model=${input.modelHint ?? config.defaultModel})`
-      : `short-form video (${finalDuration}s, model=${input.modelHint ?? config.defaultModel})`,
+    reason: `short-form video (${durationS}s, model=${input.modelHint ?? config.defaultModel})`,
   };
 }
