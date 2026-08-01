@@ -23,11 +23,21 @@
 >     +Drive mirror; degrades to per-clip if no ffmpeg. **Videos now mirror to Drive** (short/gif/longform).
 >     Still OFF by default (VIDEO_ALLOW_LONGFORM=false) → zero spend. Worker tests 36. (operator: "build OFF")
 > ALL major original-plan slices (S1–S4, Auto day-fill, S6) are BUILT + green (typecheck 19/19; adapters 33,
-> api 10, worker 36 tests). NOT yet deployed (local commits) or browser-tested. Remaining polish:
->   - Dashboard = literal calendar landing (calendar currently on /content) — small route change.
+> api 10, worker 36 tests). **Dashboard landing = the content calendar** (CalendarWorkspace, commit fa91f11).
+> **DEPLOYED to prod (2026-08-01)**: origin/main @ 11e9931.
+>   - VPS backend: mf-api + mf-worker rebuilt from new images, up + healthy (api /health 200, worker 10
+>     processors). New routes verified 401 (exist): /content-items/calendar, /content-items/fill,
+>     /content-items/:id/generate-video. Calendar DDL applied to mf-postgres (scheduled_date/slot_index).
+>   - Vercel web: https://marketforge-web.vercel.app (READY, prod) — dashboard now leads with the calendar.
+>   - DEPLOY GOTCHAS FIXED: (1) deploy.sh referenced removed `n8n` service → dropped (commit 11e9931).
+>     (2) `db:push` (push.ts) is NOT diff-based — it emits full CREATE TABLE and FAILS on a populated DB
+>     ("relation already exists"). So the `migrate` step is skipped on redeploys; schema changes go via
+>     direct DDL in scripts/ddl/. Deploy = `scripts/deploy.sh` (build) then `compose ... up -d api worker`
+>     (skip migrate). TECH-DEBT: make push.ts idempotent or add real migrations.
+> Remaining polish (not blocking):
 >   - Dedicated Seedance 2.0 / Higgsfield video adapter (currently fal/Kling per clip).
->   - Apply DDL `scripts/ddl/2026-08-01-calendar-columns.sql` on existing DBs before deploy.
->   - Live output still needs a real AI key (NVIDIA free) + a Google Shared Drive shared with the SA.
+>   - Live generation still needs a real AI key (NVIDIA free) + a Google Shared Drive shared with the SA.
+>   - Browser smoke-test the calendar authoring + auto-fill as a signed-in user.
 > NOT YET DEPLOYED to VPS/Vercel (local commits only). DDL `scripts/ddl/2026-08-01-calendar-columns.sql`
 > must be applied to any existing DB (db:push isn't incremental). Live output still needs a real AI key
 > + a Google **Shared Drive** shared with the service account.
