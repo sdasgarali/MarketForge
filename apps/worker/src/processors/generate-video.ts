@@ -21,18 +21,20 @@
 import { adapters } from '@marketforge/adapters';
 import { env } from '@marketforge/config';
 import { enqueueNotify } from '@marketforge/queue';
-import { db, withTenant, assets } from '@marketforge/db';
+import { db, withTenant, assets, contentItems } from '@marketforge/db';
+import { eq } from 'drizzle-orm';
 import { logAiRun } from '@marketforge/logger';
 import type { GeneratedVideo } from '@marketforge/adapters';
 import type { PayloadFor } from '@marketforge/contracts';
 import type { Logger } from '@marketforge/logger';
 import { defineProcessor } from './base.js';
 import { TerminalError, toError } from '../lib/errors.js';
-import { getBrand } from '../lib/brand.js';
+import { getBrand, brandContextLine } from '../lib/brand.js';
 import { setContentStatus } from '../lib/content.js';
 import { writeAudit } from '../lib/audit.js';
 import { resolveMediaPlan, type MediaPlan } from '../lib/media-policy.js';
 import { downloadToBuffer, exportGif, GifExportUnavailableError } from '../lib/gif.js';
+import { composeVideoPrompt, designVideoScene } from '../agents/video-design.agent.js';
 
 /** Media policy config drawn from the validated env (single source of truth). */
 function mediaConfig() {
@@ -88,12 +90,40 @@ export const generateVideoProcessor = defineProcessor('generate-video', async ({
     return { action: 'paused', reason: plan.reason };
   }
 
+  // --- Character + Component design (operator plan §8): expand the brief into
+  //     on-brand character + scene descriptions and fold them into the prompt.
+  //     Best-effort — video still generates if design fails. ---
+  let finalPrompt = payload.prompt;
+  {
+    const design = await withTenant(db, org_id, async (tx) => {
+      const brand = await getBrand(tx, brand_id);
+      let topic = payload.prompt.split('\n')[0]?.slice(0, 160) ?? payload.prompt;
+      if (payload.content_item_id) {
+        const [ci] = await tx
+          .select({ title: contentItems.title })
+          .from(contentItems)
+          .where(eq(contentItems.id, payload.content_item_id))
+          .limit(1);
+        if (ci?.title) topic = ci.title;
+      }
+      return designVideoScene(
+        log,
+        { workflow: 'generate-video', agent: 'video-design', org_id, brand_id, campaign_id, content_item_id: payload.content_item_id },
+        { topic, brandContext: brand ? brandContextLine(brand) : '', hints: payload.prompt },
+      );
+    }).catch((err) => {
+      log.warn({ err: toError(err).message }, 'video design step failed; using base prompt');
+      return {};
+    });
+    finalPrompt = composeVideoPrompt(payload.prompt, design);
+  }
+
   // --- Generate the clip (short or gif source) — silent for gif ------------
   // ADR-007: default to Kling via fal; plan.model already resolved to the default
   // (kling) when no explicit hint was given.
   const startedAt = Date.now();
   const video = await adapters.video.generateVideo({
-    prompt: payload.prompt,
+    prompt: finalPrompt,
     durationS: plan.durationS,
     withAudio: plan.withAudio,
     modelHint: plan.model,
