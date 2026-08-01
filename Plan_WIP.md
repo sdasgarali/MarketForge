@@ -14,9 +14,13 @@
 >     manual **Generate Video** button (`POST /content-items/:id/generate-video`).
 >   • **Auto day-fill** (bb09d0b): `POST /content-items/fill` (range × brands × platforms × per-day,
 >     cap 500) creates dated drafts + queues generation in place; `CalendarFillDialog` UI.
-> NEXT: **S4 — agents** (Character Designer, Component Designer, Market Researcher + sub-agents
-> tenant/competitor/strategy, Competitor Analyzer, Social Media Manager, formal Brain/Manager). Then
-> **S6 — video** (Seedance 2.0 / Higgsfield wiring + long-form chunking N×10s→concat).
+>   • **S4** (9e4da5d): **Market Research Manager** + 3 sub-agents (tenant/competitor/strategy) →
+>     decides platforms+formats, wired into `research` (fan-out targets recommended platforms).
+>     **Character + Component designers** wired into `generate-video` (prompt enrichment, +3 tests,
+>     worker tests 34). Removed orphaned single-shot research agent.
+> NEXT: **S6 — video** (Seedance 2.0 / Higgsfield adapter + long-form chunking N×10s→concat→Drive).
+> ⚠ S6 has a DECISION: long-form is PAUSED by the locked MVP cost guardrail (VIDEO_ALLOW_LONGFORM=false);
+> the original plan wants long-video chunking = real spend. Confirm before enabling.
 > NOT YET DEPLOYED to VPS/Vercel (local commits only). DDL `scripts/ddl/2026-08-01-calendar-columns.sql`
 > must be applied to any existing DB (db:push isn't incremental). Live output still needs a real AI key
 > + a Google **Shared Drive** shared with the service account.

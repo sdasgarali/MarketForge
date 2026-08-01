@@ -51,11 +51,21 @@
     dated drafts + queues generation in place (cap 500). `CalendarFillDialog` on the Content page.
   - NOTE: "Dashboard = calendar" — the calendar lives on `/content` (primary tab). Making it the literal
     `/dashboard` landing is a small follow-up (route swap) if desired.
-- [ ] **S4 — Agents.** Character Designer, Component Designer, Market Researcher (+ sub-agents:
-    analyze-tenant, find-competitors, business-strategy), Competitor Analyzer, Social Media Manager,
-    formal Brain/Manager that consumes sub-agent reports and decides platform/format/topic.
+- [x] **S4 — Agents.** ✅ (commit 9e4da5d)
+  - **Market Research Manager** (`market-research.agent.ts`) runs 3 sub-agents in parallel —
+    tenant analysis, competitor analysis, business strategy — then a Manager synthesis that DECIDES
+    topics + recommended platforms + format per platform. Wired into the `research` processor: the
+    fan-out now targets the Manager's recommended platforms with the recommended `content_type`.
+    (Competitor Analyzer = the competitor sub-agent; Social Media Manager = the Manager's platform/
+    format decision.) Old single-shot `research.agent.ts` removed (superseded).
+  - **Character Designer + Component Designer** (`video-design.agent.ts`, pure `composeVideoPrompt` +
+    3 tests) wired into `generate-video`: expand the brief into on-brand character + scene descriptions
+    folded into the video prompt (best-effort). Brain = `orchestrate` (implicit) + supervisor panel.
 - [ ] **S6 — Video: Seedance 2.0 / Higgsfield wiring + long-form chunking** (N×10s → ffmpeg concat →
-    Drive Video folder). Manual Generate-Video trigger endpoint.
+    Drive Video folder). ⚠ DECISION NEEDED: long-form is PAUSED by the locked MVP cost guardrail
+    (`VIDEO_ALLOW_LONGFORM=false`, CLAUDE.md). The original plan wants long-video chunking → real spend.
+    Also needs a real Higgsfield/Seedance adapter (MCP/API). Manual Generate-Video trigger endpoint DONE
+    in S3.
 
 ## Honest constraints (unchanged)
 - Live generation needs a valid AI key (NVIDIA free tier works) + a Google **Shared Drive** shared with
