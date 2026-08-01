@@ -4,12 +4,12 @@
  * worker produces a fresh version (ADR-008 output versioning).
  */
 import { and, asc, desc, eq, gte, inArray, isNotNull, lte, sql, type SQL } from 'drizzle-orm';
-import { assets, contentItems, db, publishJobs, reviewResults, withTenant } from '@marketforge/db';
+import { assets, brands, contentItems, db, publishJobs, reviewResults, withTenant } from '@marketforge/db';
 import type { AssetRow, PublishJobRow } from '@marketforge/db';
 import { enqueue } from '@marketforge/queue';
 import { createLogger } from '@marketforge/logger';
 import type { ContentStatus, Platform } from '@marketforge/contracts';
-import { NotFoundError } from '../../http/errors.js';
+import { BadRequestError, NotFoundError } from '../../http/errors.js';
 import { contentItemToDto } from '../../lib/mappers.js';
 import { assetImageUrl } from '../../lib/assets.js';
 import { buildComposite, reviewRowsToDtos } from '../../lib/reviews.js';
@@ -64,6 +64,30 @@ function buildWhere(f: ContentItemFilters): SQL | undefined {
 }
 
 type Tx = Parameters<Parameters<typeof withTenant>[2]>[0];
+
+/** Safety cap: one Auto-fill request may plan at most this many items. */
+const MAX_FILL_ITEMS = 500;
+
+/** Inclusive list of YYYY-MM-DD dates from start to end (UTC), bounded. */
+function enumerateDates(start: string, end: string, maxDays = 400): string[] {
+  const out: string[] = [];
+  const s = new Date(`${start}T00:00:00Z`);
+  const e = new Date(`${end}T00:00:00Z`);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) return out;
+  for (let d = s; d <= e && out.length < maxDays; d = new Date(d.getTime() + 86_400_000)) {
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
+export interface CalendarFillInput {
+  brand_ids?: string[];
+  platforms: Platform[];
+  start_date: string;
+  end_date: string;
+  per_day_per_platform?: number;
+  content_type?: string;
+}
 
 /**
  * For a set of content-item ids, resolve the join-derived DTO extras the web
@@ -169,6 +193,91 @@ export const contentItemsService = {
       const extras = await loadExtras(tx, rows.map((r) => r.id));
       return { items: rows.map((r) => contentItemToDto(r, extras.get(r.id) ?? {})) };
     });
+  },
+
+  /**
+   * Auto day-fill (operator plan §6): plan a range of days across brands ×
+   * platforms. For each day × brand × platform × slot, create a dated DRAFT
+   * content item then enqueue generation to fill its copy in place (date/platform
+   * preserved). "3 months in 7 days" = enqueue everything; the worker drains it.
+   */
+  async fill(orgId: string, input: CalendarFillInput) {
+    const perSlot = Math.max(1, Math.min(input.per_day_per_platform ?? 1, 10));
+    const contentType = input.content_type ?? 'post';
+    const dates = enumerateDates(input.start_date, input.end_date);
+    if (dates.length === 0) throw new BadRequestError('Invalid date range');
+    if (!input.platforms.length) throw new BadRequestError('At least one platform is required');
+
+    // Resolve target brands (given ids, or all brands in the org).
+    const brandRows = await withTenant(db, orgId, (tx) =>
+      tx.select({ id: brands.id }).from(brands),
+    );
+    const allIds = brandRows.map((b) => b.id);
+    const brandIds = input.brand_ids?.length
+      ? input.brand_ids.filter((id) => allIds.includes(id))
+      : allIds;
+    if (!brandIds.length) throw new BadRequestError('No matching brands to fill');
+
+    const planned = dates.length * brandIds.length * input.platforms.length * perSlot;
+    if (planned > MAX_FILL_ITEMS) {
+      throw new BadRequestError(
+        `This would plan ${planned} items (max ${MAX_FILL_ITEMS}). Narrow the range, brands, or platforms.`,
+      );
+    }
+
+    // Create all dated drafts in one tenant transaction.
+    const rows: { id: string; brandId: string; platform: string }[] = [];
+    await withTenant(db, orgId, async (tx) => {
+      for (const date of dates) {
+        for (const brandId of brandIds) {
+          for (const platform of input.platforms) {
+            for (let slot = 0; slot < perSlot; slot++) {
+              const [row] = await tx
+                .insert(contentItems)
+                .values({
+                  orgId,
+                  brandId,
+                  platform,
+                  contentType,
+                  language: 'en',
+                  scheduledDate: date,
+                  slotIndex: slot,
+                  status: 'draft',
+                })
+                .returning({ id: contentItems.id, brandId: contentItems.brandId, platform: contentItems.platform });
+              if (row) rows.push({ id: row.id, brandId: row.brandId, platform: row.platform ?? platform });
+            }
+          }
+        }
+      }
+    });
+
+    // Enqueue generation for each draft (fills copy → image → review in place).
+    let queued = 0;
+    for (const r of rows) {
+      await enqueue('generate-text', {
+        org_id: orgId,
+        brand_id: r.brandId,
+        content_item_id: r.id,
+        platform: r.platform as Platform,
+        content_type: contentType,
+        language: 'en',
+        attempt_reason: 'initial',
+        idempotency_key: `generate-text:fill:${r.id}`,
+      });
+      queued++;
+    }
+
+    log.info({ org_id: orgId, planned, created: rows.length, queued }, 'calendar auto-fill enqueued');
+    return {
+      planned,
+      created: rows.length,
+      queued,
+      days: dates.length,
+      brands: brandIds.length,
+      platforms: input.platforms.length,
+      per_slot: perSlot,
+    };
   },
 
   /** Manually create a content item for a calendar cell (date × platform). */

@@ -346,6 +346,31 @@ export function useUpdateContentItem() {
   });
 }
 
+/** Auto day-fill: plan a date range × brands × platforms of content. */
+export function useFillCalendar() {
+  const qc = useQueryClient();
+  const orgId = useOrgId();
+  return useMutation({
+    mutationFn: (input: {
+      brand_ids?: string[];
+      platforms: Platform[];
+      start_date: string;
+      end_date: string;
+      per_day_per_platform?: number;
+      content_type?: string;
+    }) =>
+      apiFetch<{ planned: number; created: number; queued: number; days: number }>(
+        '/content-items/fill',
+        { method: 'POST', body: input },
+      ),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['content-items', orgId] });
+      toast.success(`Auto-fill queued — ${r.created} items across ${r.days} days`);
+    },
+    onError: (e: Error) => toast.error(`Could not auto-fill: ${e.message}`),
+  });
+}
+
 /** Manual "Generate Video" trigger for a content item (Seedance/Higgsfield short). */
 export function useGenerateVideoContent() {
   const qc = useQueryClient();

@@ -73,6 +73,32 @@ contentItemsRouter.get(
   }),
 );
 
+const FillBody = z.object({
+  brand_ids: z.array(Uuid).max(50).optional(),
+  platforms: z.array(Platform).min(1).max(6),
+  start_date: DateStr,
+  end_date: DateStr,
+  per_day_per_platform: z.number().int().min(1).max(10).optional(),
+  content_type: z.string().max(40).optional(),
+});
+
+// Auto day-fill: plan a date range × brands × platforms. Manager+ (bulk AI spend).
+contentItemsRouter.post(
+  '/fill',
+  requireMinRole('manager'),
+  asyncHandler(async (req, res) => {
+    const ctx = getCtx(req);
+    const input = parseOrThrow(FillBody, req.body);
+    const result = await contentItemsService.fill(ctx.orgId, input);
+    await writeAudit(
+      ctx,
+      { action: 'content_item.fill', entityType: 'content_item', after: result },
+      req,
+    );
+    res.status(202).json(result);
+  }),
+);
+
 const ContentItemBody = z.object({
   brand_id: Uuid,
   platform: Platform,

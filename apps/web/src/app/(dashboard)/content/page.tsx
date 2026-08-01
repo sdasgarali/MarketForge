@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarDays, LayoutList, Plus } from 'lucide-react';
+import { CalendarDays, LayoutList, Plus, Wand2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -20,6 +20,7 @@ import { ContentTable } from '@/components/content/content-table';
 import { ContentCalendar } from '@/components/content/content-calendar';
 import { ContentDetailDrawer } from '@/components/content/content-detail-drawer';
 import { ContentEditorDialog } from '@/components/content/content-editor-dialog';
+import { CalendarFillDialog } from '@/components/content/calendar-fill-dialog';
 import {
   useBrands,
   useContentItems,
@@ -47,6 +48,7 @@ export default function ContentPage() {
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ContentItem | null>(null);
   const [createDate, setCreateDate] = React.useState<string | undefined>(undefined);
+  const [fillOpen, setFillOpen] = React.useState(false);
   const { data, isLoading, isError, refetch } = useContentItems(filters);
   const { data: brands } = useBrands();
 
@@ -82,6 +84,15 @@ export default function ContentPage() {
         actions={
           <div className="flex items-center gap-2">
             <MockBadge show={data?.isMock} />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setFillOpen(true)}
+              disabled={!editorBrandId}
+            >
+              <Wand2 className="h-4 w-4" />
+              Auto-fill
+            </Button>
             <Button size="sm" onClick={() => openCreate()} disabled={!editorBrandId}>
               <Plus className="h-4 w-4" />
               New content
@@ -189,6 +200,13 @@ export default function ContentPage() {
           </>
         )}
       </Tabs>
+
+      <CalendarFillDialog
+        open={fillOpen}
+        onOpenChange={setFillOpen}
+        brands={brands?.data.items ?? []}
+        activeBrandId={filters.brand}
+      />
 
       <ContentEditorDialog
         open={editorOpen}
