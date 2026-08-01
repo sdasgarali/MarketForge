@@ -34,20 +34,23 @@
 | — | **No CSV** (DB only) | ⚠ CSV fallback still in orchestrator | **S1** |
 
 ## Slices (ordered)
-- [ ] **S1 — Drive structure + DB-only (foundations).**
-  - Pure `driveContentPath({brandName,date,platform,kind,contentType})` → folder parts, with unit tests.
-  - Wire into `drive-mirror`: `<Brand>/<Y>/<M>/<D>/<Platform>/<TypeSubfolder>/`. Type map:
-    video→Video (short/reel→Shorts), gif→GIF, image→Image.
-  - Write the **TXT** (topic+content) into the `<Platform>/` folder once per content item.
-  - Drop the CSV fallback from `orchestrate` — AI 1 reads DB contacts only.
-  - Verify: worker unit tests for path builder; typecheck green.
-- [ ] **S2 — Calendar data model.**
-  - `contentItems.scheduledDate` (DATE) + `slotIndex` (int) + index. API: `GET /calendar?brand&start&end`
-    returning date×platform×items. Reuse existing content-items service.
-- [ ] **S3 — Calendar dashboard + Auto day-fill.**
-  - Make calendar the primary dashboard; date×platform cells; click → editor (manual chars/images/
-    content/story prompts) + **Generate Video** button. `POST /calendar/fill` (date range × platforms)
-    enqueues research→content→media per day/platform. "3 months in 7 days" = batched enqueue.
+- [x] **S1 — Drive structure + DB-only (foundations).** ✅ (commit 8fe83ae)
+  - Pure `driveContentPath()` in `apps/worker/src/lib/drive-path.ts` + 8 unit tests.
+  - `drive-mirror` now uploads `<Brand>/<Y>/<Month>/<D>/<Platform>/<TypeSubfolder>/` + writes a
+    `<topic>.txt` (topic+content) into the Platform folder (idempotent).
+  - CSV fallback removed from `orchestrate` — AI 1 reads DB contacts only.
+- [x] **S2 — Calendar data model.** ✅ (commit 7199f2e)
+  - `contentItems.scheduledDate` (DATE) + `slotIndex` (int) + index. DDL: `scripts/ddl/2026-08-01-...sql`.
+  - `GET /content-items/calendar?brand_id&platform&start&end`; `POST /` + `PATCH /:id` manual authoring
+    (characters/story_prompt/image_prompt in metadata). DTO carries scheduled_date/slot_index.
+- [x] **S3 — Calendar authoring + Generate Video + Auto day-fill.** ✅ (commits aafb080, bb09d0b)
+  - Editable calendar: per-day "+" and item-click open `ContentEditorDialog` (topic/content/caption/
+    hashtags/characters/story+image prompts); plots by scheduled_date. Manual **Generate Video** button →
+    `POST /content-items/:id/generate-video`.
+  - **Auto day-fill**: `POST /content-items/fill` (date range × brands × platforms × per-day) creates
+    dated drafts + queues generation in place (cap 500). `CalendarFillDialog` on the Content page.
+  - NOTE: "Dashboard = calendar" — the calendar lives on `/content` (primary tab). Making it the literal
+    `/dashboard` landing is a small follow-up (route swap) if desired.
 - [ ] **S4 — Agents.** Character Designer, Component Designer, Market Researcher (+ sub-agents:
     analyze-tenant, find-competitors, business-strategy), Competitor Analyzer, Social Media Manager,
     formal Brain/Manager that consumes sub-agent reports and decides platform/format/topic.

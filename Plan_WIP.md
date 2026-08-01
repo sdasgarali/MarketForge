@@ -1,19 +1,26 @@
 # Plan WIP
 
 ## SESSION_CONTEXT_RETRIEVAL
-> **Control surface + orchestration are LIVE & deployed** (VPS api/worker + Vercel web). Latest front:
-> AI 1 (orchestrator) now branches on **in-app Contacts** (DB, no CSV) — reads brand contacts with
-> `status='new'` → Pipeline 2 (video); else → Pipeline 3 (research). CSV-in-Drive kept as fallback.
-> New `contacts` table (RLS + grant), `contactsService` (list/add/remove), brand routes, and a
-> **Contacts panel** on the brand page (add/remove leads = AI 1's data source). All committed (41ccfb4).
-> STANDING ENGINEERING GAP (the recurring "stored but not forwarded"): per-step provider/model tile
-> selections live in `organizations.settings.pipelineStepProviders` but the **worker never reads them** —
-> generation routing uses the org's whole configured provider set, not the per-step choice, and the
-> chosen model is not threaded as `model_hint` into the agent LLM call. Also pending: RAG retrieval into
-> prompts (store✓ / retrieve pending). None of these need user keys — pure engineering.
-> NEXT STEP (proposed): thread per-step provider+model from `pipelineStepProviders` → the enqueued job →
-> worker processor → agent LLM call, so tile selections actually take effect at generation time.
-> To restart stack: `docker compose up -d` (infra persists via restart:unless-stopped) → `pnpm dev`.
+> **Building the ORIGINAL PLAN for real** (see `docs/ORIGINAL_PLAN_BUILD.md`). Operator directive
+> (2026-08-01): make `original plan.txt` real; **no CSV — use the DB**; **store content in gDrive**.
+> DONE this session (all committed + typecheck 19/19, worker tests 31/31):
+>   • **S1** (8fe83ae): Drive content structure `<Brand>/<Year>/<Month>/<Day>/<Platform>/{TXT,Video,
+>     Shorts,Image,GIF}` via pure `driveContentPath()` (+tests) wired into `drive-mirror` (uploads asset +
+>     writes `<topic>.txt`). AI 1 (`orchestrate`) now reads **DB contacts only** — CSV fallback removed.
+>   • **S2** (7199f2e): calendar model — `content_items.scheduled_date` + `slot_index` (+ DDL script);
+>     `GET /content-items/calendar`, `POST /` + `PATCH /:id` manual authoring (chars/story/image prompts).
+>   • **S3** (aafb080): editable calendar on `/content` — per-day "+" + item-click → `ContentEditorDialog`
+>     (manual topic/content/caption/hashtags/characters/story+image prompts), plots by scheduled_date,
+>     manual **Generate Video** button (`POST /content-items/:id/generate-video`).
+>   • **Auto day-fill** (bb09d0b): `POST /content-items/fill` (range × brands × platforms × per-day,
+>     cap 500) creates dated drafts + queues generation in place; `CalendarFillDialog` UI.
+> NEXT: **S4 — agents** (Character Designer, Component Designer, Market Researcher + sub-agents
+> tenant/competitor/strategy, Competitor Analyzer, Social Media Manager, formal Brain/Manager). Then
+> **S6 — video** (Seedance 2.0 / Higgsfield wiring + long-form chunking N×10s→concat).
+> NOT YET DEPLOYED to VPS/Vercel (local commits only). DDL `scripts/ddl/2026-08-01-calendar-columns.sql`
+> must be applied to any existing DB (db:push isn't incremental). Live output still needs a real AI key
+> + a Google **Shared Drive** shared with the service account.
+> To restart stack: `docker compose up -d` → `pnpm dev`.
 
 ## Decisions locked (2026-07-31)
 - MVP platforms: **X + Instagram** · Budget: **lean < $500/mo** · Policy: **per-brand trust tiers** ·
